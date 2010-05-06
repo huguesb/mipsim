@@ -89,6 +89,6 @@ typedef struct {
 ELF_File* elf_file_create();
 void elf_file_destroy(ELF_File *f);
 
-void elf_file_load(ELF_File *f, const char *filename);
+int elf_file_load(ELF_File *f, const char *filename);
 
 #endif
