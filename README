@@ -1,0 +1,37 @@
+
+MIPSim : a simple MIPS simulator written as a school project.
+
+
+Build instructions
+------------------
+
+You need a C compiler to build MIPSim, preferably GCC but any C99 conformant
+compiler should do.
+
+Instead of a handwritten Makefile, a qmake project file is provided.
+
+Build is as simple as :
+
+$ qmake && make
+
+
+Usage
+-----
+
+mipsim [-options] program
+
+Options :
+  -f freq    :
+  -d         :
+  -c file    : 
+
+
+Limitations
+-----------
+
+MIPSim can only run valid ELF32 binaries targeted to the MIPS I-IV architecture.
+
+Such binaries can be obtained via a cross-compiler toolchain (e.g GCC build for
+mips-elf target)
+
+MIPSim is not very accurate in terms of execution speed and memory timings.
