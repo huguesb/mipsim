@@ -99,7 +99,7 @@ static const QByteArray prompts[TARGET_COUNT] = {
 
 bool at_prompt[TARGET_COUNT];
 
-QByteArray command(int target, const QString& command)
+QByteArray command(int target, const QByteArray& command)
 {
     QByteArray tmp;
     QProcess *p = sim[target];
@@ -115,7 +115,7 @@ QByteArray command(int target, const QString& command)
     
     //qDebug("%d> %s", target, qPrintable(command));
     
-    p->write(command.toLocal8Bit());
+    p->write(command);
     p->waitForBytesWritten(100);
     
     QByteArray ans;
@@ -136,9 +136,14 @@ QByteArray command(int target, const QString& command)
     return ans;
 }
 
-static const QString reg_dump_cmd[TARGET_COUNT] = {
+static const QByteArray reg_dump_cmd[TARGET_COUNT] = {
     "info registers\n",
     "d\n"
+};
+
+static const QByteArray reg_dump_skip[TARGET_COUNT] = {
+    "The program has no registers now.\n",
+    "dummy!"
 };
 
 static const QList<int> reg_dump_mapping[TARGET_COUNT] = {
@@ -228,6 +233,9 @@ void update_register_file(int target)
 {
     QByteArray ans = command(target, reg_dump_cmd[target]);
     
+    if ( ans == reg_dump_skip[target] )
+        return;
+    
     int n = 0;
     split_ws(ans, ranges[target]);
     
@@ -243,9 +251,9 @@ void update_register_file(int target)
                 QRange r = ranges[target].at(idx);
                 quint32 val = hex_value(ans.constData() + r.first, r.second, &ok);
                 
-                if ( !ok )
+                if ( !ok ) {
                     qWarning("(%i) borked reg dump : %i = %s", target, i, ans.mid(r.first, r.second).constData());
-                else {
+                } else {
                     ++n;
                     
                     if ( i >= 0 && i < 32 )
@@ -324,6 +332,12 @@ int main(int argc, char **argv)
     
     forever
     {
+        if ( command(GDB, "info program\n") == "The program being debugged is not being run.\n" )
+        {
+            qDebug("sim target stopped");
+            break;
+        }
+        
         if ( memcmp(&regs[GDB], &regs[MIPSim], sizeof(RegisterFile)) )
         {
             if ( !diff_seq )
