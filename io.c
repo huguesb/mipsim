@@ -23,7 +23,7 @@ int mipsim_open (int cxt, const char *path, int flags)
 
 int mipsim_read (int cxt, int file, char *d, int len)
 {
-    return fread(d, sizeof(char), len, stdout);
+    return fread(d, sizeof(char), len, stdin);
 }
 
 int mipsim_write(int cxt, int file, char *d, int len)
