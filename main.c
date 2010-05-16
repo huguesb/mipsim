@@ -8,11 +8,12 @@
 **  Refer to the accompanying COPYING file.
 ****************************************************************************/
 
-#include "mipsim.h"
+#include "version.h"
 
+#include "config.h"
+#include "io.h"
+#include "cli.h"
 #include "mipself.h"
-
-#include <stdio.h>
 
 void version()
 {
@@ -49,24 +50,42 @@ int main(int argc, char **argv)
         return 1;
     }
     
+    /*
+        Set default config option
+    */
+    MIPSIM_Config *cfg = mipsim_config();
+    cfg->io_mask = 0;
+    cfg->trace_log = NULL;
+    cfg->debug_log = NULL;
+    
+    /*
+        Create ELF file loading structure
+    */
     ELF_File *f = elf_file_create();
     
     if ( f == NULL )
     {
-        printf("MIPSim: Failed to allocate memory for ELF file");
+        printf("MIPSim: Failed to allocate memory for ELF file\n");
         return 2;
     }
     
-    elf_file_load(f, argv[1]);
+    /*
+        Load ELF file
+    */
+    if ( elf_file_load(f, argv[1]) )
+    {
+        printf("MIPSim : Unable to load ELF file\n");
+        return 2;
+    }
     
     /*
-    
+        Create simulator structures
     */
     MIPS *m = mips_create(arch);
     
     if ( m == NULL )
     {
-        printf("MIPSim: Failed to allocate memory for MIPS machine");
+        printf("MIPSim: Failed to allocate memory for MIPS machine\n");
         return 2;
     }
     
@@ -78,7 +97,7 @@ int main(int argc, char **argv)
     /*
         Run program in simulator
     */
-    int err_code = mips_exec(m, 100);
+    mipsim_cli(m);
     
     /*
         always destroy emulated machine before ELF file

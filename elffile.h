@@ -14,7 +14,8 @@
 #include <stdint.h>
 
 /*
-    Taken from ELF spec
+    Most structures taken from ELF spec, with some slight
+    adaptations to the purpose of this loader.
 */
 
 typedef uint32_t ELF32_Addr;
@@ -36,14 +37,107 @@ enum {
     EI_NIDENT   = 16
 };
 
+enum {
+    ELFMAG0 = 0x7F,
+    ELFMAG1 = 'E',
+    ELFMAG2 = 'L',
+    ELFMAG3 = 'F'
+};
+
+enum {
+    ELFCLASSNONE = 0,
+    ELFCLASS32   = 1,
+    ELFCLASS64   = 2
+};
+
+enum {
+    ELFDATANONE = 0,
+    ELFDATA2LSB = 1,
+    ELFDATA2MSB = 2
+};
+
+enum {
+    ET_NONE   = 0,
+    ET_REL    = 1,
+    ET_EXEC   = 2,
+    ET_DYN    = 3,
+    ET_CORE   = 4,
+    ET_LOPROC = 0xff00,
+    ET_HIPROC = 0xffff
+};
+
+enum {
+    EM_NONE  = 0,
+    EM_M32   = 1,
+    EM_SPARC = 2,
+    EM_386   = 3,
+    EM_68K   = 4,
+    EM_88K   = 5,
+    EM_860   = 7,
+    EM_MIPS  = 8
+};
+
+enum {
+    EV_NONE    = 0,
+    EV_CURRENT = 1
+};
+
+enum {
+    PT_NONE    = 0,
+    PT_LOAD    = 1,
+    PT_DYNAMIC = 2,
+    PT_INTERP  = 3,
+    PT_NOTE    = 4,
+    PT_SHLIB   = 5,
+    PT_PHDR    = 6,
+    PT_LOPROC  = 0x70000000,
+    PT_HIPROC  = 0x7FFFFFFF
+};
+
+enum {
+    SHN_UNDEF     = 0,
+    SHF_LORESERVE = 0xff00,
+    SHF_LOPROC    = 0xff00,
+    SHF_HIPROC    = 0xff1f,
+    SHN_ABS       = 0xfff1,
+    SHN_COMMON    = 0xfff2,
+    SHN_HIRESERVE = 0xffff
+};
+
+enum {
+    SHT_NULL     = 0,
+    SHT_PROGBITS = 1,
+    SHT_SYMTAB   = 2,
+    SHT_STRTAB   = 3,
+    SHT_RELA     = 4,
+    SHT_HASH     = 5,
+    SHT_DYNAMIC  = 6,
+    SHT_NOTE     = 7,
+    SHT_NOBITS   = 8,
+    SHT_REL      = 9,
+    SHT_SHLIB    = 10,
+    SHT_DYNSYM   = 11,
+    SHT_LOPROC   = 0x70000000,
+    SHT_HIPROC   = 0x7FFFFFFF,
+    SHT_LOUSER   = 0x80000000,
+    SHT_HIUSER   = 0xFFFFFFFF
+};
+
+enum {
+    SHF_WRITE     = 1,
+    SHF_ALLOC     = 2,
+    SHF_EXECINSTR = 4,
+    SHF_MASKPROC  = 0xf0000000
+};
+
 typedef struct {
     ELF32_Char e_ident[EI_NIDENT];
     ELF32_Half e_type;
     ELF32_Half e_machine;
     ELF32_Word e_version;
     ELF32_Addr e_entry;
-    ELF32_Off e_phoff;
-    ELF32_Off e_shoff;
+    ELF32_Off  e_phoff;
+    ELF32_Off  e_shoff;
     ELF32_Word e_flags;
     ELF32_Half e_ehsize;
     ELF32_Half e_phentsize;
@@ -54,8 +148,20 @@ typedef struct {
 } ELF_Header;
 
 typedef struct {
+    /* Section header */
+    ELF32_Word s_name;
+    ELF32_Word s_type;
+    ELF32_Word s_flags;
+    ELF32_Addr s_addr;
+    ELF32_Off  s_offset;
+    ELF32_Word s_size;
+    ELF32_Word s_link;
+    ELF32_Word s_info;
+    ELF32_Word s_addralign;
+    ELF32_Word s_entsize;
     
-    
+    /* data (might be null or widely different from ELF file representation) */
+    ELF32_Char *s_data;
 } ELF_Section;
 
 typedef struct {
@@ -84,6 +190,8 @@ typedef struct {
     
     ELF32_Word nsegment;
     ELF_Segment **segments;
+    
+    ELF_Section *shstrtab;
 } ELF_File;
 
 ELF_File* elf_file_create();

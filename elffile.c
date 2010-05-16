@@ -13,62 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum {
-    ELFMAG0 = 0x7F,
-    ELFMAG1 = 'E',
-    ELFMAG2 = 'L',
-    ELFMAG3 = 'F'
-};
-
-enum {
-    ELFCLASSNONE = 0,
-    ELFCLASS32 = 1,
-    ELFCLASS64 = 2
-};
-
-enum {
-    ELFDATANONE = 0,
-    ELFDATA2LSB = 1,
-    ELFDATA2MSB = 2
-};
-
-enum {
-    ET_NONE = 0,
-    ET_REL = 1,
-    ET_EXEC = 2,
-    ET_DYN = 3,
-    ET_CORE = 4,
-    ET_LOPROC = 0xff00,
-    ET_HIPROC = 0xffff
-};
-
-enum {
-    EM_NONE = 0,
-    EM_M32 = 1,
-    EM_SPARC = 2,
-    EM_386 = 3,
-    EM_68K = 4,
-    EM_88K = 5,
-    EM_860 = 7,
-    EM_MIPS = 8
-};
-
-enum {
-    EV_NONE = 0,
-    EV_CURRENT = 1
-};
-
-enum {
-    PT_NONE = 0,
-    PT_LOAD = 1,
-    PT_DYNAMIC = 2,
-    PT_INTERP = 3,
-    PT_NOTE = 4,
-    PT_SHLIB = 5,
-    PT_PHDR = 6,
-    PT_LOPROC = 0x70000000,
-    PT_HIPROC = 0x7FFFFFFF
-};
+#include "io.h"
 
 ELF32_Half elf_fget_half(FILE *f, ELF32_Char endian)
 {
@@ -104,6 +49,7 @@ ELF_File* elf_file_create()
         f->nsegment = 0;
         f->sections = NULL;
         f->segments = NULL;
+        f->shstrtab = NULL;
     }
     
     return f;
@@ -114,8 +60,11 @@ void elf_file_cleanup(ELF_File *f)
     /* free section data */
     for ( ELF32_Word i = 0; i < f->nsection; ++i )
     {
-        
-        free(f->sections[i]);
+        if ( f->sections[i] )
+        {
+            free(f->sections[i]->s_data);
+            free(f->sections[i]);
+        }
     }
     
     /* free segment data */
@@ -139,13 +88,14 @@ void elf_file_cleanup(ELF_File *f)
     f->nsegment = 0;
     f->sections = NULL;
     f->segments = NULL;
+    f->shstrtab = NULL;
 }
 
 int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
 {
     if ( fread(hdr->e_ident, sizeof(ELF32_Char), EI_NIDENT, handle) != (sizeof(ELF32_Char) * EI_NIDENT) )
     {
-        printf("ELF:%s: Invalid header : failed to read identifier\n", filename);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : failed to read identifier\n", filename);
         return 1;
     }
     
@@ -154,19 +104,19 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
          hdr->e_ident[EI_MAG2] != ELFMAG2 ||
          hdr->e_ident[EI_MAG3] != ELFMAG3 )
     {
-        printf("ELF:%s: Invalid header : wrong magic number\n", filename);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : wrong magic number\n", filename);
         return 1;
     }
     
     if ( hdr->e_ident[EI_CLASS] != ELFCLASS32 )
     {
-        printf("ELF:%s: Invalid header : expected class %i, found %i\n", filename, ELFCLASS32, hdr->e_ident[EI_CLASS]);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : expected class %i, found %i\n", filename, ELFCLASS32, hdr->e_ident[EI_CLASS]);
         return 1;;
     }
     
     if ( hdr->e_ident[EI_VERSION] != EV_CURRENT )
     {
-        printf("ELF:%s: Invalid header : expected version %i, found %i\n", filename, EV_CURRENT, hdr->e_ident[EI_VERSION]);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : expected version %i, found %i\n", filename, EV_CURRENT, hdr->e_ident[EI_VERSION]);
         return 1;
     }
     
@@ -174,7 +124,7 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
     
     if ( endian != ELFDATA2LSB && endian != ELFDATA2MSB )
     {
-        printf("ELF:%s: Invalid header : unknown data format %2x", filename, endian);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : unknown data format %2x\n", filename, endian);
         return 1;
     }
     
@@ -194,16 +144,16 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
     
     if ( hdr->e_version != EV_CURRENT )
     {
-        printf("ELF:%s: Invalid header : expected version %i, found %i\n", filename, EV_CURRENT, hdr->e_version);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : expected version %i, found %i\n", filename, EV_CURRENT, hdr->e_version);
         return 1;
     }
     
     #define ELF_CHECK_EQU(s, val, expect) \
         if ( val != expect ) \
-        { printf("ELF:%s: Invalid " s " expected %i, found %i\n", filename, expect, val); return 1; }
+        { mipsim_printf(IO_WARNING, "ELF:%s: Invalid " s " expected %i, found %i\n", filename, expect, val); return 1; }
     #define ELF_CHECK_SUP(s, val, expect) \
         if ( val < expect ) \
-        { printf("ELF:%s: Invalid " s " expected at least %i, found %i\n", filename, expect, val); return 1; }
+        { mipsim_printf(IO_WARNING, "ELF:%s: Invalid " s " expected at least %i, found %i\n", filename, expect, val); return 1; }
     
     ELF_CHECK_EQU("type"   , hdr->e_type, ET_EXEC)
     ELF_CHECK_EQU("machine", hdr->e_machine, EM_MIPS)
@@ -237,19 +187,19 @@ int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, ELF32_Off mi
     {
         if ( s->p_memsz < s->p_filesz )
         {
-            printf("ELF:%s: Invalid file : suspicious segment size\n", filename);
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : suspicious segment size\n", filename);
             return 1;
         }
         
         if ( s->p_offset < min_offset )
         {
-            printf("ELF:%s: Invalid file : suspicious segment offset\n", filename);
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : suspicious segment offset\n", filename);
             return 1;
         }
         
         if ( fseek(handle, s->p_offset, SEEK_SET) )
         {
-            printf("ELF:%s: Invalid file : unable to reach segment\n", filename);
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : unable to reach segment\n", filename);
             return 1;
         }
         
@@ -258,15 +208,15 @@ int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, ELF32_Off mi
         
         if ( sz != s->p_filesz * sizeof(ELF32_Char) )
         {
-            printf("ELF:%s: Invalid file : unable to read data of segment [%d vs %u]\n", filename, sz, s->p_filesz);
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : unable to read data of segment [%d vs %u]\n", filename, sz, s->p_filesz);
             free(s->p_data);
             s->p_data = NULL;
             return 1;
         }
         
-        printf("ELF:%s: Succesfully loaded segment (%d bytes)\n", filename, s->p_filesz);
+        mipsim_printf(IO_DEBUG, "ELF:%s: Succesfully loaded segment (%d bytes)\n", filename, s->p_filesz);
     } else {
-        printf("ELF:%s: Skipped segment (type %8x)\n", filename, s->p_type);
+        mipsim_printf(IO_DEBUG, "ELF:%s: Skipped segment (type %8x)\n", filename, s->p_type);
         return 2;
     }
     
@@ -277,7 +227,7 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
 {
     if ( fseek(handle, elf->header->e_phoff, SEEK_SET) )
     {
-        printf("ELF:%s: Invalid file : unable to locate program header table\n", filename);
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : unable to locate program header table\n", filename);
         return 1;
     }
     
@@ -296,17 +246,17 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
             ELF32_Word soff = elf->header->e_phoff + elf->header->e_phentsize * i;
             
             if ( soff & 3 )
-                printf("ELF:%s: Suspicious (un)alignement\n", filename);
+                mipsim_printf(IO_WARNING, "ELF:%s: Suspicious (un)alignement\n", filename);
             
             if ( fseek(handle, soff, SEEK_SET) )
             {
-                printf("ELF:%s: Invalid file : broken program table\n", filename);
+                mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : broken program table\n", filename);
             } else {
                 ELF_Segment *s = (ELF_Segment*)malloc(sizeof(ELF_Segment));
                 
                 if ( elf_file_load_segment(s, handle, endian, min_offset, filename) )
                 {
-                    
+                    free(s);
                 } else {
                     elf->segments[elf->nsegment] = s;
                     ++elf->nsegment;
@@ -318,11 +268,138 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
     return 0;
 }
 
+int elf_fread(ELF32_Char **d, FILE *handle, ELF32_Off off, ELF32_Word sz, ELF32_Off min_offset, const char *filename)
+{
+    if ( sz <= 0 )
+        return 1;
+    
+    if ( fseek(handle, off, SEEK_SET) )
+    {
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : unable to reach section data\n", filename);
+        *d = NULL;
+        return 1;
+    }
+    
+    *d = (ELF32_Char*)malloc(sz * sizeof(ELF32_Char));
+    
+    if ( *d == NULL )
+    {
+        mipsim_printf(IO_WARNING, "ELF:%s: Failed to allocate memory for section data\n", filename);
+        return 1;
+    }
+    
+    size_t rsz = fread(*d, sizeof(ELF32_Char), sz, handle);
+    
+    if ( rsz != sz * sizeof(ELF32_Char) )
+    {
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : unable to read data of section [%d vs %u]\n", filename, rsz, sz);
+        free(*d);
+        *d = NULL;
+        return 1;
+    }
+    
+    return 0;
+}
+
+int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, ELF32_Off min_offset, const char *filename)
+{
+    s->s_name      = elf_fget_word(handle, endian);
+    s->s_type      = elf_fget_word(handle, endian);
+    s->s_flags     = elf_fget_word(handle, endian);
+    s->s_addr      = elf_fget_word(handle, endian);
+    s->s_offset    = elf_fget_word(handle, endian);
+    s->s_size      = elf_fget_word(handle, endian);
+    s->s_link      = elf_fget_word(handle, endian);
+    s->s_info      = elf_fget_word(handle, endian);
+    s->s_addralign = elf_fget_word(handle, endian);
+    s->s_entsize   = elf_fget_word(handle, endian);
+    
+    s->s_data      = NULL;
+    
+    if ( s->s_type == SHT_STRTAB )
+    {
+        int ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, min_offset, filename);
+        
+        if ( ret )
+            return ret;
+        
+    } else if ( s->s_type == SHT_SYMTAB ) {
+        
+    }
+    
+    return 0;
+}
+
+int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
+{
+    if ( fseek(handle, elf->header->e_shoff, SEEK_SET) )
+    {
+        mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : unable to locate section header table\n", filename);
+        return 1;
+    }
+    
+    if ( !elf->header->e_shnum )
+        return 0;
+    
+    mipsim_printf(IO_DEBUG, "ELF:%s:Loading %d sections\n", filename, elf->header->e_shnum);
+    
+    const ELF32_Char endian = elf->header->e_ident[EI_DATA];
+    const ELF32_Off min_offset = elf->header->e_shoff + elf->header->e_shentsize * (elf->header->e_shnum + 1);
+    
+    elf->sections = (ELF_Section**)malloc(elf->header->e_shnum * sizeof(ELF_Section*));
+    elf->nsection = 0;
+    
+    ELF32_Word soff = elf->header->e_shoff;
+    
+    if ( (soff & 3) || (elf->header->e_shentsize & 3) )
+        mipsim_printf(IO_WARNING, "ELF:%s: Suspicious section (un)alignement\n", filename);
+    
+    for ( int i = 0; i < elf->header->e_shnum; ++i, soff += elf->header->e_shentsize )
+    {
+        if ( fseek(handle, soff, SEEK_SET) )
+        {
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : broken section table\n", filename);
+        } else {
+            ELF_Section *s = (ELF_Section*)malloc(sizeof(ELF_Section));
+            
+            if ( elf_file_load_section(s, handle, endian, min_offset, filename) )
+            {
+                free(s);
+            } else {
+                elf->sections[elf->nsection] = s;
+                ++elf->nsection;
+                
+                if ( i == elf->header->e_shstrndx && s->s_type == SHT_STRTAB )
+                {
+                    elf->shstrtab = s;
+                }
+            }
+        }
+    }
+    
+    ELF_Section *sst = elf->shstrtab;
+    
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
+    {
+        ELF_Section *s = elf->sections[i];
+        
+        mipsim_printf(IO_DEBUG, "%s :\n", sst ? sst->s_data + s->s_name : NULL);
+        mipsim_printf(IO_DEBUG, "\tflags : %c%c%c\n",
+               s->s_type & SHF_ALLOC ? 'r' : '-',
+               s->s_type & SHF_WRITE ? 'w' : '-',
+               s->s_type & SHF_EXECINSTR ? 'x' : '-'
+               );
+        mipsim_printf(IO_DEBUG, "\tvaddr : 0x%08x-0x%08x\n", s->s_addr, s->s_addr + s->s_size);
+    }
+    
+    return 0;
+}
+
 int elf_file_load(ELF_File *elf, const char *filename)
 {
     if ( elf == NULL )
     {
-        printf("cannot load file %s into NULL struct.\n", filename);
+        mipsim_printf(IO_WARNING, "cannot load file %s into NULL struct.\n", filename);
         return -1;
     } else {
         elf_file_cleanup(elf);
@@ -332,11 +409,17 @@ int elf_file_load(ELF_File *elf, const char *filename)
     
     if ( !handle )
     {
-        printf("ELF:%s: Unable to open file\n", filename);
+        mipsim_printf(IO_WARNING, "ELF:%s: Unable to open file\n", filename);
         return -1;
     }
     
     elf->header = (ELF_Header*)malloc(sizeof(ELF_Header));
+    
+    if ( !elf->header )
+    {
+        mipsim_printf(IO_WARNING, "ELF:%s: Unable to allocate memory for ELF header\n", filename);
+        return -1;
+    }
     
     int exit_code = elf_file_load_header(elf->header, handle, filename);
     
@@ -345,14 +428,18 @@ int elf_file_load(ELF_File *elf, const char *filename)
         free(elf->header);
         elf->header = NULL;
     } else {
-        exit_code = elf_file_load_segments(elf, handle, filename);
+        exit_code = elf_file_load_sections(elf, handle, filename);
         
         if ( exit_code )
         {
-            
-            
+            mipsim_printf(IO_WARNING, "ELF:%s: Errors encountered while loading ELF sections\n", filename);
         } else {
+            exit_code = elf_file_load_segments(elf, handle, filename);
             
+            if ( exit_code )
+            {
+                mipsim_printf(IO_WARNING, "ELF:%s: Errors encountered while loading program segements\n", filename);
+            }
         }
     }
     

@@ -13,6 +13,7 @@
 
 #include "mips.h"
 
+/*
 typedef struct _Rop {
     unsigned int opcode : 6;
     unsigned int rs : 5;
@@ -33,6 +34,7 @@ typedef struct _Jop {
     unsigned int opcode : 6;
     unsigned int address : 26;
 } Jop;
+*/
 
 enum {
     OPCODE_MASK    = 0xFC000000,

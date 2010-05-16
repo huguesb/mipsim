@@ -6,7 +6,7 @@ CONFIG -= qt
 
 OBJECTS_DIR = .obj
 
-QMAKE_CFLAGS += -std=c99
+QMAKE_CFLAGS += -Wno-unused -std=c99
 
-HEADERS += mipsim.h elffile.h mips.h mipself.h mipsarch.h
-SOURCES += main.c elffile.c mips.c mipself.c mipsarch.c mipsmem.c mipsdecode.c
+HEADERS += version.h config.h io.h cli.h elffile.h mipself.h mips.h mips_p.h  decode.h monitor.h
+SOURCES += main.c config.c io.c cli.c elffile.c mipself.c mips.c mips_p.c decode.c memory.c monitor.c

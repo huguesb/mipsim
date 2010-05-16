@@ -10,6 +10,8 @@
 
 #include "mipself.h"
 
+#include "io.h"
+
 int mips_load_elf(MIPS *m, ELF_File *f)
 {
     for ( ELF32_Word i = 0; i < f->nsegment; ++i )
@@ -19,12 +21,17 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         if ( s == NULL )
             continue;
         
-        printf("Loading segment %i : [%08x-%08x]\n", i, s->p_vaddr, s->p_vaddr + s->p_memsz);
+        // Load sections to fine tune RO/RW status...
+        mipsim_printf(IO_DEBUG, "Loading segment %i : [%08x-%08x]\n", i, s->p_vaddr, s->p_vaddr + s->p_memsz);
         
-        m->mem.map_ro(&m->mem, s->p_vaddr, s->p_memsz, s->p_data);
+        m->mem.map_rw(&m->mem, s->p_vaddr, s->p_memsz, s->p_data);
+        
+        // give it some slack as newlib apparently use data beyond .bss as if it was normal...
+        m->mem.map_alloc(&m->mem, s->p_vaddr + s->p_memsz, 0x1000);
     }
     
-    m->hw.pc = f->header->e_entry;
+    if ( f->header )
+        m->hw.set_pc(&m->hw, f->header->e_entry);
     
     return 0;
 }

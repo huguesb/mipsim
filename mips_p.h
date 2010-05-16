@@ -8,10 +8,10 @@
 **  Refer to the accompanying COPYING file.
 ****************************************************************************/
 
-#include "mipsarch.h"
+#ifndef _MIPS_P_H_
+#define _MIPS_P_H_
 
-int decode_unknown(MIPS *m, uint32_t ir)
-{
-    //printf("MIPS: Unrecognized instruction.\n");
-    return MIPS_OK;
-}
+#include "mips.h"
+
+
+#endif
