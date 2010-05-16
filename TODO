@@ -1,0 +1,31 @@
+
+TODO :
+
+ * Coprocessor support
+    - move data to/from coprocs
+    - model somewhat accurately control regs of cp1 (and cp0 ???)
+    - exception handling
+    - FPU
+ * 64 bit support
+    - address translation fix
+    - 64 bit ALU
+ * MIPS 32/64 R2 ISA
+    - instructions decode
+ * Better monitor / IO decoupling
+ * Better ELF file loading : map memory on a section basis and honor WX flags
+ * CLI
+    - proper parameter parsing
+ * debugger
+    - make optional
+    - breakpoints
+    - watchpoints
+    - read symbols from ELF .symtab to prettify disassembly
+    - read debugging informations from ELF sections?
+ * automated tester
+    - proper parsing of CLI arguments
+    - more tweaking via CLI
+ * tests
+    - some assembly code (teachers probably expect that...)
+    - more complex C code
+    - more advanced I/O ??? (mem-mapped peripherals? simulate driver(s) via file descriptors?)
+ * GUI demonstrating the neat compartimentation of IO contexts?
