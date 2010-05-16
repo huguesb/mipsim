@@ -11,6 +11,13 @@
 #include "decode.h"
 
 #include "io.h"
+#include "monitor.h"
+
+static inline uint32_t s32_to_u32(int32_t v)
+{ return *((uint32_t*)&v); }
+
+static inline int32_t u32_to_s32(uint32_t v)
+{ return *((int32_t*)&v); }
 
 int decode_unknown(MIPS *m, uint32_t ir);
 
@@ -662,14 +669,14 @@ int decode_bltz     (MIPS *m, uint32_t ir)
 
 int decode_shift   (MIPS *m, uint32_t ir)
 {
-    uint32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     int sa = ir & 4 ? (m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) & 0x1F) : (ir & SH_MASK) >> SH_SHIFT;
     
     if ( ir & 2 )
         if ( ir & 1 )
-            rt = ((int32_t)rt) >> sa;
-        else
             rt >>= sa;
+        else
+            rt = s32_to_u32(rt) >> sa;
     else
         rt <<= sa;
     
@@ -767,10 +774,10 @@ int decode_mult    (MIPS *m, uint32_t ir)
 
 int decode_multu   (MIPS *m, uint32_t ir)
 {
-    uint32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    uint32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
-    uint64_t res = rs * rt;
+    uint64_t res = s32_to_u32(rs) * s32_to_u32(rt);
     
     m->hw.set_hi(&m->hw, res >> 32);
     m->hw.set_lo(&m->hw, res & 0x00000000FFFFFFFFL);
@@ -791,19 +798,19 @@ int decode_div     (MIPS *m, uint32_t ir)
 
 int decode_divu    (MIPS *m, uint32_t ir)
 {
-    uint32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    uint32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
-    m->hw.set_lo(&m->hw, rs / rt);
-    m->hw.set_hi(&m->hw, rs % rt);
+    m->hw.set_lo(&m->hw, s32_to_u32(rs) / s32_to_u32(rt));
+    m->hw.set_hi(&m->hw, s32_to_u32(rs) % s32_to_u32(rt));
     
     return MIPS_OK;
 }
 
 int decode_and     (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
     m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, rs & rt);
     
@@ -812,8 +819,8 @@ int decode_and     (MIPS *m, uint32_t ir)
 
 int decode_or      (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
     m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, rs | rt);
     
@@ -822,8 +829,8 @@ int decode_or      (MIPS *m, uint32_t ir)
 
 int decode_xor     (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
     m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, rs ^ rt);
     
@@ -832,8 +839,8 @@ int decode_xor     (MIPS *m, uint32_t ir)
 
 int decode_nor     (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
     m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, ~(rs | rt));
 
@@ -852,17 +859,17 @@ int decode_slt     (MIPS *m, uint32_t ir)
 
 int decode_sltu    (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
-    m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, (rs < rt) ? 1 : 0);
+    m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, (s32_to_u32(rs) < s32_to_u32(rt)) ? 1 : 0);
     
     return MIPS_OK;
 }
 
 int decode_movcond (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
     if ( (rt && !(ir & 1)) || (!rt && (ir & 1)) )
         m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT));
@@ -900,18 +907,18 @@ int decode_slti    (MIPS *m, uint32_t ir)
 
 int decode_sltiu   (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = (int16_t)(ir & IMM_MASK);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = (int16_t)(ir & IMM_MASK);
     
-    m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (rs < rt) ? 1 : 0);
+    m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (s32_to_u32(rs) < s32_to_u32(rt)) ? 1 : 0);
     
     return MIPS_OK;
 }
 
 int decode_andi    (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = (ir & IMM_MASK);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = (ir & IMM_MASK);
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, rs & rt);
     
@@ -920,8 +927,8 @@ int decode_andi    (MIPS *m, uint32_t ir)
 
 int decode_ori     (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = (ir & IMM_MASK);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = (ir & IMM_MASK);
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, rs | rt);
     
@@ -930,8 +937,8 @@ int decode_ori     (MIPS *m, uint32_t ir)
 
 int decode_xori    (MIPS *m, uint32_t ir)
 {
-    MIPS_NativeU rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
-    MIPS_NativeU rt = (ir & IMM_MASK);
+    MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    MIPS_Native rt = (ir & IMM_MASK);
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, rs ^ rt);
     
