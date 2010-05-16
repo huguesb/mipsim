@@ -156,12 +156,12 @@ static const QList<int> reg_dump_mapping[TARGET_COUNT] = {
     << 76 << 75
     ,
     QList<int>()
-    <<  7 << 10 << 13 << 16 << 19 << 22 << 25 << 28
-    << 31 << 34 << 37 << 40 << 43 << 46 << 49 << 52
-    << 55 << 58 << 61 << 64 << 67 << 70 << 73 << 76
-    << 79 << 82 << 85 << 88 << 91 << 94 << 97 << 100
+    << 11 << 14 << 17 << 20 << 23 << 26 << 29 << 32
+    << 35 << 38 << 41 << 44 << 47 << 50 << 53 << 56
+    << 59 << 62 << 65 << 68 << 71 << 74 << 77 << 80
+    << 83 << 86 << 89 << 92 << 95 << 98 << 101<< 104
     <<  2 << -1
-    << -1 << -1
+    <<  5 <<  8
 };
 
 typedef QPair<int, int> QRange;
@@ -364,7 +364,7 @@ int main(int argc, char **argv)
                         
                         continue;
                     } else {
-                        qDebug("Corrected delay slot GDB lag @ 0x%08x", pc);
+                        //qDebug("Corrected delay slot GDB lag @ 0x%08x", pc);
                         continue;
                     }
                 }

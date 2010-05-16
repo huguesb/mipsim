@@ -62,6 +62,47 @@ int cli_quit(const char *cmd, MIPS *m)
     return -2;
 }
 
+void print_status(MIPS *m)
+{
+    switch ( m->stop_reason )
+    {
+        case MIPS_OK :
+            break;
+            
+        case MIPS_INVALID :
+            printf("Invalid instruction\n");
+            break;
+            
+        case MIPS_UNSUPPORTED :
+            printf("Unsupported instruction\n");
+            break;
+            
+        case MIPS_TRAP :
+            printf("Trap\n");
+            break;
+            
+        case MIPS_BREAK :
+            printf("Break\n");
+            break;
+            
+        case MIPS_EXCEPTION :
+            printf("Exception\n");
+            break;
+            
+        case MIPS_ERROR :
+            printf("Internal error\n");
+            break;
+            
+        case MIPS_UNPREDICTABLE :
+            printf("Unpredictable behavior\n");
+            break;
+            
+        default:
+            printf("Unknown status\n");
+            break;
+    }
+}
+
 int cli_run(const char *cmd, MIPS *m)
 {
     int ret;
@@ -69,6 +110,8 @@ int cli_run(const char *cmd, MIPS *m)
     do {
         ret = mips_exec(m, 1);
     } while ( ret == MIPS_OK );
+    
+    print_status(m);
     
     return ret;
 }
@@ -116,12 +159,13 @@ int cli_trace(const char *cmd, MIPS *m)
 
 int cli_dump(const char *cmd, MIPS *m)
 {
-    printf("PC = 0x%08x\n", m->hw.get_pc(&m->hw));
-   
-    printf("GPRs : \n");
+    printf("    pc = 0x%08x\n", m->hw.get_pc(&m->hw));
+    
+    printf("    hi = 0x%08x        lo = 0x%08x\n", m->hw.get_hi(&m->hw), m->hw.get_lo(&m->hw));
+    
     for ( int i = 0; i < 8; ++i )
     {
-        printf("    %6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x\n",
+        printf("%6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x\n",
                mips_reg_name(4*i),     m->hw.get_reg(&m->hw, 4*i),
                mips_reg_name(4*i + 1), m->hw.get_reg(&m->hw, 4*i+1),
                mips_reg_name(4*i + 2), m->hw.get_reg(&m->hw, 4*i+2),
