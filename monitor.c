@@ -27,6 +27,65 @@ char* fetch_str(MIPS *m, MIPS_Addr a)
     return s;
 }
 
+/*
+    support for some syscalls (required by project spec)
+*/
+int mips_syscall(MIPS *m, int code)
+{
+    switch ( code )
+    {
+        case 1 :
+        {
+            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            mipsim_printf(IO_MONITOR, "%d", a0);
+            break;
+        }
+            
+        case 4 :
+        {
+            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            char *s = fetch_str(m, a0);
+            mipsim_printf(IO_MONITOR, "%s", s);
+            free(s);
+            break;
+        }
+            
+        case 5 :
+        {
+            
+            break;
+        }
+            
+        case 8 :
+        {
+            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            MIPS_Native a1 = m->hw.get_reg(&m->hw, A1);
+            
+            char *buffer = (char*)malloc(a1);
+            mipsim_read(IO_MONITOR, 0, buffer, a1);
+            for ( MIPS_Native i = 0; i < a1; ++i )
+                mips_write_b(m, a0 + i, buffer[i], NULL);
+            free(buffer);
+            
+            break;
+        }
+            
+        case 10 :
+            mips_stop(m, MIPS_QUIT);
+            return MIPS_QUIT;
+            break;
+            
+        default:
+            mipsim_printf(IO_WARNING, "Unknown syscall %d\n", code);
+            break;
+    }
+    
+    return MIPS_OK;
+}
+
+/*
+    support for some idt/pmon entry points (required for C/newlib support) 
+*/
 int mips_monitor(MIPS *m, int entry)
 {
     switch ( entry )

@@ -13,6 +13,7 @@
 
 #include "mips.h"
 
+int mips_syscall(MIPS *m, int code);
 int mips_monitor(MIPS *m, int entry);
 
 #endif

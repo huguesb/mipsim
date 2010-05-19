@@ -157,6 +157,7 @@ struct _MIPS_Coprocessor {
 
 enum {
     MIPS_OK,
+    MIPS_QUIT,
     MIPS_INVALID,
     MIPS_UNSUPPORTED,
     MIPS_TRAP,

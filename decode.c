@@ -80,16 +80,17 @@ int decode_sdi     (MIPS *m, uint32_t ir);
 int decode_sdl     (MIPS *m, uint32_t ir);
 int decode_sdr     (MIPS *m, uint32_t ir);
 
+int decode_syscall (MIPS *m, uint32_t ir);
 int decode_break   (MIPS *m, uint32_t ir);
 int decode_trap    (MIPS *m, uint32_t ir);
 
 int decode_lwc     (MIPS *m, uint32_t ir);
 int decode_swc     (MIPS *m, uint32_t ir);
 
-int decode_mfc    (MIPS *m, uint32_t ir);
-int decode_mtc    (MIPS *m, uint32_t ir);
-int decode_cfc    (MIPS *m, uint32_t ir);
-int decode_ctc    (MIPS *m, uint32_t ir);
+int decode_mfc     (MIPS *m, uint32_t ir);
+int decode_mtc     (MIPS *m, uint32_t ir);
+int decode_cfc     (MIPS *m, uint32_t ir);
+int decode_ctc     (MIPS *m, uint32_t ir);
 int decode_bc1     (MIPS *m, uint32_t ir);
 int decode_fpu     (MIPS *m, uint32_t ir);
 
@@ -106,7 +107,7 @@ const MIPS_Instr Rinstr[64] = {
     {"jalr",    "d, s",    decode_jr,       ISA_from_1},
     {"movz",    "d, s, t", decode_movcond,  ISA_from_4 | ISA_32},
     {"movn",    "d, s, t", decode_movcond,  ISA_from_4 | ISA_32},
-    {"syscall", "",        decode_unknown,  ISA_from_1},
+    {"syscall", "",        decode_syscall,  ISA_from_1},
     {"break",   "",        decode_break,    ISA_from_1},
     {NULL,      NULL,      NULL          ,  ISA_NONE},
     {NULL,      NULL,      NULL          ,  ISA_NONE},
@@ -1252,6 +1253,11 @@ int decode_sdr     (MIPS *m, uint32_t ir)
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
+}
+
+int decode_syscall (MIPS *m, uint32_t ir)
+{
+    return mips_syscall(m, m->hw.get_reg(&m->hw, V0));
 }
 
 int decode_break   (MIPS *m, uint32_t ir)
