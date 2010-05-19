@@ -288,7 +288,7 @@ int main(int argc, char **argv)
     target = QString::fromLocal8Bit(argv[1]);
     
     mipsim.setProcessChannelMode(QProcess::MergedChannels);
-    mipsim.start("./mipsim", QStringList() << target);
+    mipsim.start("./simips", QStringList() << target);
     
     gdb.setProcessChannelMode(QProcess::MergedChannels);
     gdb.start("mips-elf-gdb", QStringList() << target << "--silent");
