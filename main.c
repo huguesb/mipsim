@@ -12,7 +12,7 @@
 
 #include "config.h"
 #include "io.h"
-#include "cli.h"
+#include "shell.h"
 #include "mipself.h"
 
 void version()
