@@ -13,6 +13,6 @@
 
 #include "mips.h"
 
-int mipsim_cli(MIPS *m);
+int mipsim_shell();
 
 #endif
