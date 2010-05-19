@@ -164,8 +164,7 @@ static const QList<int> reg_dump_mapping[TARGET_COUNT] = {
     <<  5 <<  8
 };
 
-typedef QPair<int, int> QRange;
-typedef QList<QRange> QRangeList;
+typedef QVector<int> QRangeList;
 
 void split_ws(QByteArray s, QRangeList& l)
 {
@@ -180,7 +179,7 @@ void split_ws(QByteArray s, QRangeList& l)
         if ( isspace(d[idx]) )
         {
             if ( last != idx )
-                l << qMakePair(last, idx - last);
+                l << last << (idx - last);
             
             last = ++idx;
         } else {
@@ -189,7 +188,7 @@ void split_ws(QByteArray s, QRangeList& l)
     }
     
     if ( last != idx )
-        l << qMakePair(last, idx - last);
+        l << last << (idx - last);
     
 }
 
@@ -245,14 +244,15 @@ void update_register_file(int target)
         
         if ( idx >= 0 )
         {
-            if ( idx < ranges[target].count() )
+            if ( (2*idx+1) < ranges[target].count() )
             {
                 bool ok = false;
-                QRange r = ranges[target].at(idx);
-                quint32 val = hex_value(ans.constData() + r.first, r.second, &ok);
+                int r_f = ranges[target].at(2*idx);
+                int r_s = ranges[target].at(2*idx+1);
+                quint32 val = hex_value(ans.constData() + r_f, r_s, &ok);
                 
                 if ( !ok ) {
-                    qWarning("(%i) borked reg dump : %i = %s", target, i, ans.mid(r.first, r.second).constData());
+                    qWarning("(%i) borked reg dump : %i = %s", target, i, ans.mid(r_f, r_s).constData());
                 } else {
                     ++n;
                     
