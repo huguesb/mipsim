@@ -225,8 +225,10 @@ void mips_simple_write_d(MIPS_Memory *m, MIPS_Addr a, uint64_t d, int *stat)
     mips_simple_write_w(m, a + 4, d & 0x00000000FFFFFFFFL, stat);
 }
 
-void mips_init_memory(MIPS_Memory *mem)
+void mips_init_memory(MIPS *m)
 {
+    MIPS_Memory *mem = &m->mem;
+    
     mem->d = NULL;
     
     mem->unmap  = mips_simple_unmap;

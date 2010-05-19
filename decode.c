@@ -83,6 +83,16 @@ int decode_sdr     (MIPS *m, uint32_t ir);
 int decode_break   (MIPS *m, uint32_t ir);
 int decode_trap    (MIPS *m, uint32_t ir);
 
+int decode_lwc     (MIPS *m, uint32_t ir);
+int decode_swc     (MIPS *m, uint32_t ir);
+
+int decode_mfc    (MIPS *m, uint32_t ir);
+int decode_mtc    (MIPS *m, uint32_t ir);
+int decode_cfc    (MIPS *m, uint32_t ir);
+int decode_ctc    (MIPS *m, uint32_t ir);
+int decode_bc1     (MIPS *m, uint32_t ir);
+int decode_fpu     (MIPS *m, uint32_t ir);
+
 const MIPS_Instr Rinstr[64] = {
     {"sll",     "d, t, <", decode_shift,    ISA_from_1}, // 000000
     {NULL,      NULL,      NULL,            ISA_NONE},
@@ -253,6 +263,111 @@ const MIPS_Instr Iinstr[32] = {
     {NULL,      NULL,      NULL,            ISA_NONE}
 };
 
+const MIPS_Instr cp0[32] = {
+    {"mfc0",    "t, S",    decode_mfc,      ISA_from_1}, // 000000
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {"mtc0",    "t, S",    decode_mtc,      ISA_from_1},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE}
+};
+
+const MIPS_Instr cp1[32] = {
+    {"mfc1",    "t, S",    decode_mfc,      ISA_from_1}, // 000000
+    {"dmfc1",   "t, S",    NULL,            ISA_from_3},
+    {"cfc1",    "t, S",    decode_cfc,      ISA_from_1},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {"mtc1",    "t, S",    decode_mtc,      ISA_from_1},
+    {"dmtc1",   "t, S",    NULL,            ISA_from_3},
+    {"ctc1",    "t, S",    decode_ctc,      ISA_from_1},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      decode_bc1,      ISA_from_1},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      decode_fpu,      ISA_from_1}, // 10000 : fmt = S (float 32)
+    {NULL,      NULL,      decode_fpu,      ISA_from_1}, // 10001 : fmt = D (float 64)
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      decode_fpu,      ISA_from_1}, // 10100 : fmt = W (fixed 32)
+    {NULL,      NULL,      decode_fpu,      ISA_from_1}, // 10101 : fmt = L (fixed 64)
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE}
+};
+
+const MIPS_Instr cp2[32] = {
+    {"mfc2",    "t, S",    decode_mfc,      ISA_from_1}, // 000000
+    {"dmfc2",   "t, S",    NULL,            ISA_from_3},
+    {"cfc2",    "t, S",    decode_cfc,      ISA_from_1},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {"mtc2",    "t, S",    decode_mtc,      ISA_from_1},
+    {"dmtc2",   "t, S",    NULL,            ISA_from_3},
+    {"ctc2",    "t, S",    decode_ctc,      ISA_from_1},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE}
+};
+
 const MIPS_Instr opcodes[64] = {
     {NULL,      NULL,      decode_special,  ISA_from_1},
     {NULL,      NULL,      decode_regimm,   ISA_from_1},
@@ -303,16 +418,16 @@ const MIPS_Instr opcodes[64] = {
     {"swr",     "t, i(s)", decode_swr,      ISA_from_1},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {"ll",      "t, i(s)", decode_unknown,  ISA_from_2}, // 110000
-    {"lwc1",    "t, i(s)", decode_unknown,  ISA_from_1},
-    {"lwc2",    "t, i(s)", decode_unknown,  ISA_from_1},
+    {"lwc1",    "t, i(s)", decode_lwc,      ISA_from_1},
+    {"lwc2",    "t, i(s)", decode_lwc,      ISA_from_1},
     {"pref",    "h, i(s)", decode_unknown,  ISA_from_4 | ISA_32},
     {"lld",     "t, i(s)", decode_unknown,  ISA_from_3},
     {"ldc1",    "t, i(s)", decode_unknown,  ISA_from_2},
     {"ldc2",    "t, i(s)", decode_unknown,  ISA_from_32},
     {"ld",      "t, i(s)", decode_ld,       ISA_from_3},
     {"sc",      "t, i(s)", decode_unknown,  ISA_from_2}, // 111000
-    {"swc1",    "t, i(s)", decode_unknown,  ISA_from_1}, 
-    {"swc2",    "t, i(s)", decode_unknown,  ISA_from_1},
+    {"swc1",    "t, i(s)", decode_swc,      ISA_from_1}, 
+    {"swc2",    "t, i(s)", decode_swc,      ISA_from_1},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {"scd",     "t, i(s)", decode_unknown,  ISA_from_3},
     {"sdc1",    "t, i(s)", decode_unknown,  ISA_from_2},
@@ -324,7 +439,17 @@ const MIPS_Instr opcodes[64] = {
 
 int print_reg(char *s, int i, int maxsz, int reg)
 {
-    const char *rn = mips_reg_name(reg);
+    const char *rn = mips_gpr_name(reg);
+    
+    while ( (i < maxsz) && (*rn != '\0') )
+        s[i++] = *rn++;
+    
+    return i;
+}
+
+int print_fp_reg(char *s, int i, int maxsz, int reg)
+{
+    const char *rn = mips_fpr_name(reg);
     
     while ( (i < maxsz) && (*rn != '\0') )
         s[i++] = *rn++;
@@ -346,6 +471,8 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
     const uint8_t rs = (ir & RS_MASK) >> RS_SHIFT;
     const uint16_t imm = (ir & IMM_MASK);
     const uint32_t addr = (ir & ADDR_MASK);
+    const uint8_t fd = (ir & FD_MASK) >> FD_SHIFT;
+    const uint8_t fs = (ir & FS_MASK) >> FS_SHIFT;
     
     int j = 0;
     
@@ -365,6 +492,18 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
                 
             case 'd' :
                 j = print_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, rd);
+                break;
+                
+            case 'S' :
+                j = print_fp_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, fs);
+                break;
+                
+            case 'T' :
+                j = print_fp_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, rt);
+                break;
+                
+            case 'D' :
+                j = print_fp_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, fd);
                 break;
                 
             case '<' :
@@ -398,23 +537,11 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
 
 int mips_universal_decode(MIPS *m)
 {
-    MIPS_Native pc = m->hw.get_pc(&m->hw);
-    
-    if ( (pc & 0xFFFFF003) == 0xBFC00000 )
-    {
-        // monitor (I/O) entry points
-        
-        // execute requested operation (out of emulation)
-        mips_monitor(m, (pc >> 2) & 0x1FF);
-        
-        // go back to emulation (j r31)
-        m->hw.set_pc(&m->hw, m->hw.get_reg(&m->hw, 31));
-        
-        return MIPS_OK;
-    }
-    
     int stat;
-    uint32_t ir = mips_read_w(m, pc, &stat);
+    uint32_t ir = m->hw.fetch(&m->hw, &stat);
+    
+    if ( stat == MEM_FWMON )
+        return MIPS_OK;
     
     if ( stat != MEM_OK )
     {
@@ -422,6 +549,8 @@ int mips_universal_decode(MIPS *m)
         mips_stop(m, MIPS_ERROR);
         return MIPS_ERROR;
     }
+    
+    MIPS_Native pc = m->hw.get_pc(&m->hw);
     
     mipsim_printf(IO_TRACE, "%08x:\t%08x\t", (uint32_t)pc, ir);
     
@@ -1128,13 +1257,53 @@ int decode_trap    (MIPS *m, uint32_t ir)
 
 int decode_cp0     (MIPS *m, uint32_t ir)
 {
-    mipsim_printf(IO_TRACE, "cop 0\n");
+    /*
+    MIPS_Instr i = cp0[(ir & FMT_MASK) >> FMT_SHIFT];
+    
+    if ( i.decode )
+    {
+        if ( i.mnemonic != NULL )
+            mipsim_printf(IO_TRACE, "%s %s", i.mnemonic, mips_disasm(i.args, m->hw.get_pc(&m->hw), ir));
+        
+        if ( i.isa & (1 << m->architecture) )
+        {
+            if ( i.mnemonic != NULL ) mipsim_printf(IO_TRACE, "\n");
+            return i.decode(m, ir);
+        } else {
+            mipsim_printf(IO_TRACE, "\t\t[Unsupported in %s]\n", mips_isa_name(m->architecture));
+            return 1;
+        }
+    } else {
+        mipsim_printf(IO_TRACE, "cp0 ???\n");
+    }
+    */
+    
+    printf("cp0\n");
+    
     return MIPS_OK;
 }
 
 int decode_cp1     (MIPS *m, uint32_t ir)
 {
-    mipsim_printf(IO_TRACE, "cop 1\n");
+    MIPS_Instr i = cp1[(ir & FMT_MASK) >> FMT_SHIFT];
+    
+    if ( i.decode )
+    {
+        if ( i.mnemonic != NULL )
+            mipsim_printf(IO_TRACE, "%s %s", i.mnemonic, mips_disasm(i.args, m->hw.get_pc(&m->hw), ir));
+        
+        if ( i.isa & (1 << m->architecture) )
+        {
+            if ( i.mnemonic != NULL ) mipsim_printf(IO_TRACE, "\n");
+            return i.decode(m, ir);
+        } else {
+            mipsim_printf(IO_TRACE, "\t\t[Unsupported in %s]\n", mips_isa_name(m->architecture));
+            return 1;
+        }
+    } else {
+        mipsim_printf(IO_TRACE, "cp1 ???\n");
+    }
+    
     return MIPS_OK;
 }
 
@@ -1147,5 +1316,71 @@ int decode_cp2     (MIPS *m, uint32_t ir)
 int decode_cp3     (MIPS *m, uint32_t ir)
 {
     mipsim_printf(IO_TRACE, "cop 3\n");
+    return MIPS_OK;
+}
+
+int decode_lwc      (MIPS *m, uint32_t ir)
+{
+    MIPS_Coprocessor *cp = &m->cp[(ir >> OPCODE_SHIFT) & 3];
+    MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
+    
+    int stat;
+    cp->set_reg(cp, (ir & RT_MASK) >> RT_SHIFT, mips_read_w(m, a, &stat));
+    
+    return MIPS_OK;
+}
+
+int decode_swc      (MIPS *m, uint32_t ir)
+{
+    MIPS_Coprocessor *cp = &m->cp[(ir >> OPCODE_SHIFT) & 3];
+    MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
+    
+    int stat;
+    mips_write_w(m, a, cp->get_reg(cp, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFFFFFF, &stat);
+    
+    return MIPS_OK;
+}
+
+int decode_mfc     (MIPS *m, uint32_t ir)
+{
+    MIPS_Coprocessor *cp = &m->cp[(ir >> OPCODE_SHIFT) & 3];
+    
+    m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, cp->get_reg(cp, (ir & FS_MASK) >> FS_SHIFT));
+    return MIPS_OK;
+}
+
+int decode_mtc     (MIPS *m, uint32_t ir)
+{
+    MIPS_Coprocessor *cp = &m->cp[(ir >> OPCODE_SHIFT) & 3];
+    
+    cp->set_reg(cp, (ir & FS_MASK) >> FS_SHIFT, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT));
+    return MIPS_OK;
+}
+
+int decode_cfc     (MIPS *m, uint32_t ir)
+{
+    MIPS_Coprocessor *cp = &m->cp[(ir >> OPCODE_SHIFT) & 3];
+    
+    m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, cp->get_ctrl(cp, (ir & FS_MASK) >> FS_SHIFT));
+    return MIPS_OK;
+}
+
+int decode_ctc     (MIPS *m, uint32_t ir)
+{
+    MIPS_Coprocessor *cp = &m->cp[(ir >> OPCODE_SHIFT) & 3];
+    
+    cp->set_ctrl(cp, (ir & FS_MASK) >> FS_SHIFT, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT));
+    return MIPS_OK;
+}
+
+int decode_bc1     (MIPS *m, uint32_t ir)
+{
+    
+    return MIPS_OK;
+}
+
+int decode_fpu     (MIPS *m, uint32_t ir)
+{
+    
     return MIPS_OK;
 }

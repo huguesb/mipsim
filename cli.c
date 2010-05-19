@@ -166,10 +166,10 @@ int cli_dump(const char *cmd, MIPS *m)
     for ( int i = 0; i < 8; ++i )
     {
         printf("%6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x\n",
-               mips_reg_name(4*i),     m->hw.get_reg(&m->hw, 4*i),
-               mips_reg_name(4*i + 1), m->hw.get_reg(&m->hw, 4*i+1),
-               mips_reg_name(4*i + 2), m->hw.get_reg(&m->hw, 4*i+2),
-               mips_reg_name(4*i + 3), m->hw.get_reg(&m->hw, 4*i+3));
+               mips_gpr_name(4*i),     m->hw.get_reg(&m->hw, 4*i),
+               mips_gpr_name(4*i + 1), m->hw.get_reg(&m->hw, 4*i+1),
+               mips_gpr_name(4*i + 2), m->hw.get_reg(&m->hw, 4*i+2),
+               mips_gpr_name(4*i + 3), m->hw.get_reg(&m->hw, 4*i+3));
     }
     
     return 0;

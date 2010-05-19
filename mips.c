@@ -13,9 +13,9 @@
 #include "io.h"
 #include "decode.h"
 
-extern void mips_init_memory(MIPS_Memory *mem);
-extern void mips_init_processor(MIPS_Processor *hw);
-extern void mips_init_coprocessor(MIPS_Coprocessor *hw);
+extern void mips_init_memory(MIPS *m);
+extern void mips_init_processor(MIPS *m);
+extern void mips_init_coprocessor(MIPS *m, int n);
 
 //extern void mips_cleanup_memory(MIPS_Memory *mem);
 extern void mips_cleanup_processor(MIPS_Processor *hw);
@@ -39,16 +39,28 @@ const char* mips_isa_name(int isa)
     return isa >= MIPS_ARCH_FIRST && isa < MIPS_ARCH_LAST ? mips_isa_names[isa - MIPS_ARCH_FIRST] : NULL;
 }
 
-static const char *mips_reg_names[32] = {
-    "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3",
-    "$t0",   "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7",
-    "$s0",   "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7",
-    "$t8",   "$t9", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra"
+static const char *mips_gpr_names[32] = {
+    "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3",
+    "t0",   "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+    "s0",   "s1", "s2", "s3", "s4", "s5", "s6", "s7",
+    "t8",   "t9", "k0", "k1", "gp", "sp", "fp", "ra"
 };
 
-const char* mips_reg_name(int reg)
+static const char *mips_fpr_names[32] = {
+    "fp0",  "fp1",  "fp2",  "fp3",  "fp4",  "fp5",  "fp6",  "fp7",
+    "fp8",  "fp9",  "fp10", "fp11", "fp12", "fp13", "fp14", "fp15",
+    "fp16", "fp17", "fp18", "fp19", "fp20", "fp21", "fp22", "fp23",
+    "fp24", "fp25", "fp26", "fp27", "fp28", "fp29", "fp30", "fp31"
+};
+
+const char* mips_gpr_name(int reg)
 {
-    return reg >= 0 && reg < 32 ? mips_reg_names[reg & 31] : NULL;
+    return reg >= 0 && reg < 32 ? mips_gpr_names[reg & 31] : NULL;
+}
+
+const char* mips_fpr_name(int reg)
+{
+    return reg >= 0 && reg < 32 ? mips_fpr_names[reg & 31] : NULL;
 }
 
 MIPS* mips_create(int arch)
@@ -64,22 +76,22 @@ MIPS* mips_create(int arch)
     m->architecture = arch;
     m->decode = mips_universal_decode;
     
-    mips_init_memory(&m->mem);
-    mips_init_processor(&m->hw);
-    mips_init_coprocessor(&m->cp0);
-    mips_init_coprocessor(&m->cp1);
-    mips_init_coprocessor(&m->cp2);
-    mips_init_coprocessor(&m->cp3);
+    mips_init_memory(m);
+    mips_init_processor(m);
+    mips_init_coprocessor(m, 0);
+    mips_init_coprocessor(m, 1);
+    mips_init_coprocessor(m, 2);
+    mips_init_coprocessor(m, 3);
     
     return m;
 }
 
 void mips_destroy(MIPS *m)
 {
-    mips_cleanup_coprocessor(&m->cp3);
-    mips_cleanup_coprocessor(&m->cp2);
-    mips_cleanup_coprocessor(&m->cp1);
-    mips_cleanup_coprocessor(&m->cp0);
+    mips_cleanup_coprocessor(&m->cp[3]);
+    mips_cleanup_coprocessor(&m->cp[2]);
+    mips_cleanup_coprocessor(&m->cp[1]);
+    mips_cleanup_coprocessor(&m->cp[0]);
     mips_cleanup_processor(&m->hw);
     
     m->mem.unmap(&m->mem);

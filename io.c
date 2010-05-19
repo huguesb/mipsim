@@ -23,12 +23,29 @@ int mipsim_open (int cxt, const char *path, int flags)
 
 int mipsim_read (int cxt, int file, char *d, int len)
 {
-    return fread(d, sizeof(char), len, stdin);
+    if ( cxt == IO_MONITOR && file == 0 )
+    {
+        return read(0, d, len);
+    } else {
+        printf("Damn I/O!");
+    }
+    
+    //int ret = fread(d, sizeof(char), len, stdin);
+    return 0;
 }
 
 int mipsim_write(int cxt, int file, char *d, int len)
 {
-    return fwrite(d, sizeof(char), len, stdout);
+    if ( cxt == IO_MONITOR )
+    {
+        int ret = fwrite(d, sizeof(char), len, stdout);
+        fflush(stdout);
+        return ret;
+    } else {
+        printf("Damn I/O!");
+    }
+    
+    return 0;
 }
 
 int mipsim_close(int cxt, int file)

@@ -13,29 +13,6 @@
 
 #include "mips.h"
 
-/*
-typedef struct _Rop {
-    unsigned int opcode : 6;
-    unsigned int rs : 5;
-    unsigned int rt : 5;
-    unsigned int rd : 5;
-    unsigned int shift : 5;
-    unsigned int function : 6;
-} Rop;
-
-typedef struct _Iop {
-    unsigned int opcode : 6;
-    unsigned int rs : 5;
-    unsigned int rt : 5;
-    unsigned int immediate : 16;
-} Iop;
-
-typedef struct _Jop {
-    unsigned int opcode : 6;
-    unsigned int address : 26;
-} Jop;
-*/
-
 enum {
     OPCODE_MASK    = 0xFC000000,
     OPCODE_UP_MASK = 0xF0000000,
@@ -53,7 +30,15 @@ enum {
     RT_SHIFT       = 16,
     RD_SHIFT       = 11,
     SH_SHIFT       = 6,
-    FN_SHIFT       = 0
+    FN_SHIFT       = 0,
+    
+    FMT_MASK       = 0x03E00000,
+    FS_MASK        = 0x0000F800,
+    FD_MASK        = 0x000007C0,
+    
+    FMT_SHIFT      = 21,
+    FS_SHIFT       = 11,
+    FD_SHIFT       = 6
 };
 
 enum {
