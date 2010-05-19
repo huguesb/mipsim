@@ -118,7 +118,7 @@ void mips_destroy(MIPS *m)
     free(m);
 }
 
-int mips_exec(MIPS *m, uint32_t n)
+int mips_exec(MIPS *m, uint32_t n, int skip_proc)
 {
     if ( m == NULL || m->decode == NULL )
     {
@@ -126,11 +126,27 @@ int mips_exec(MIPS *m, uint32_t n)
         return MIPS_ERROR;
     }
     
+    int nest = 0;
     m->stop_reason = MIPS_OK;
     
-    while ( (m->stop_reason == MIPS_OK) && n-- )
+    while ( (m->stop_reason == MIPS_OK) && n )
     {
+        MIPS_Native pc_pre = m->hw.get_pc(&m->hw);
+        MIPS_Native ra_pre = m->hw.get_reg(&m->hw, RA);
         m->decode(m);
+        MIPS_Native pc_post = m->hw.get_pc(&m->hw);
+        MIPS_Native ra_post = m->hw.get_reg(&m->hw, RA);
+        
+        if ( skip_proc )
+        {
+            if ( ra_post != ra_pre && ra_post == pc_pre + 8 )
+                ++nest;
+            else if ( ra_post == ra_pre && pc_post == ra_pre )
+                --nest;
+        }
+        
+        if ( !nest )
+            --n;
     }
     
     return m->stop_reason;

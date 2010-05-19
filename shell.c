@@ -35,6 +35,7 @@ enum {
 typedef struct _Command {
     const char *name;
     command_handler handler; 
+    const char *help;
 } Command;
 
 int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
@@ -163,7 +164,7 @@ int shell_run(int argc, char **argv, MIPS *m)
     int ret;
     
     do {
-        ret = mips_exec(m, 1);
+        ret = mips_exec(m, 1, 0);
     } while ( ret == MIPS_OK );
     
     print_status(m);
@@ -188,7 +189,27 @@ int shell_step(int argc, char **argv, MIPS *m)
         n = 1;
     }
     
-    return mips_exec(m, n) ? COMMAND_FAIL : COMMAND_OK;
+    return mips_exec(m, n, 1) ? COMMAND_FAIL : COMMAND_OK;
+}
+
+int shell_stepi(int argc, char **argv, MIPS *m)
+{
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    int n = 0;
+    
+    if ( argc == 2 )
+    {
+        n = strtoul(argv[1], NULL, 0);
+    } else if ( argc != 1 ) {
+        printf("step expects at most one integer parameter\n");
+        return COMMAND_PARAM_COUNT;
+    } else {
+        n = 1;
+    }
+    
+    return mips_exec(m, n, 0) ? COMMAND_FAIL : COMMAND_OK;
 }
 
 int shell_trace(int argc, char **argv, MIPS *m)
@@ -221,6 +242,56 @@ int shell_trace(int argc, char **argv, MIPS *m)
     return COMMAND_OK;
 }
 
+int shell_dasm(int argc, char **argv, MIPS *m)
+{
+    (void)argc; (void)argv;
+    
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    return COMMAND_OK;
+}
+
+int shell_dreg(int argc, char **argv, MIPS *m)
+{
+    (void)argc; (void)argv;
+    
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    return COMMAND_OK;
+}
+
+int shell_sreg(int argc, char **argv, MIPS *m)
+{
+    (void)argc; (void)argv;
+    
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    return COMMAND_OK;
+}
+
+int shell_dmem(int argc, char **argv, MIPS *m)
+{
+    (void)argc; (void)argv;
+    
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    return COMMAND_OK;
+}
+
+int shell_smem(int argc, char **argv, MIPS *m)
+{
+    (void)argc; (void)argv;
+    
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    return COMMAND_OK;
+}
+
 int shell_dump(int argc, char **argv, MIPS *m)
 {
     (void)argc; (void)argv;
@@ -244,23 +315,70 @@ int shell_dump(int argc, char **argv, MIPS *m)
     return COMMAND_OK;
 }
 
+int shell_help(int argc, char **argv, MIPS *m);
+
 static const Command commands[] = {
     // shortcuts
-    {"r", shell_run},
-    {"s", shell_step},
-    {"d", shell_dump},
-    {"t", shell_trace},
-    {"q", shell_quit},
+    {"r",  shell_run, ""},
+    {"s",  shell_step, ""},
+    {"si", shell_stepi, ""},
+    {"d",  shell_dump, ""},
+    {"t",  shell_trace, ""},
+    {"q",  shell_quit, ""},
     
     // full names
-    {"run", shell_run},
-    {"step", shell_step},
-    {"dump", shell_dump},
-    {"trace", shell_trace},
-    {"quit", shell_quit},
-    {"exit", shell_quit},
-    {NULL, NULL}
+    {"dasm",  shell_dasm, ""},
+    {"dreg",  shell_dreg, ""},
+    {"sreg",  shell_sreg, ""},
+    {"dmem",  shell_dmem, ""},
+    {"smem",  shell_smem, ""},
+    {"run",   shell_run, ""},
+    {"step",  shell_step, ""},
+    {"stepi", shell_stepi, ""},
+    {"dump",  shell_dump, ""},
+    {"trace", shell_trace, ""},
+    {"quit",  shell_quit, ""},
+    {"exit",  shell_quit, ""},
+    {"help",  shell_help, ""},
+    {NULL, NULL, NULL}
 };
+
+int shell_help(int argc, char **argv, MIPS *m)
+{
+    if ( argc > 1 )
+    {
+        const Command *c = commands;
+        
+        while ( c->name != NULL && c->help != NULL )
+        {
+            if ( !strcmp(c->name, argv[1]) )
+            {
+                printf("%s : %s", c->name, c->help);
+                break;
+            }
+            
+            ++c;
+        }
+    } else {
+        printf(
+            "Supported commands :\n"
+            " load\n"
+            " run\n"
+            " step\n"
+            " stepi\n"
+            " dasm\n"
+            " dreg\n"
+            " dmem\n"
+            " sreg\n"
+            " smem\n"
+            " exit\n"
+            "\n"
+            "type : \"help\" followed by a command name for specific help.\n"
+        );
+    }
+    
+    return COMMAND_OK;
+}
 
 int execute_command(int argc, char **argv, MIPS *m)
 {

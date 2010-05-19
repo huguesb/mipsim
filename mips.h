@@ -222,7 +222,7 @@ MIPS* mips_create(int arch);
 void mips_destroy(MIPS *m);
 void mips_reset(MIPS *m);
 
-int mips_exec(MIPS *m, uint32_t n);
+int mips_exec(MIPS *m, uint32_t n, int skip_proc);
 void mips_stop(MIPS *m, int reason);
 
 uint8_t  mips_read_b(MIPS *m, MIPS_Addr a, int *stat);
