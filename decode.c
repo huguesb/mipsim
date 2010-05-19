@@ -587,7 +587,8 @@ int mips_universal_decode(MIPS *m)
 
 int decode_unknown(MIPS *m, uint32_t ir)
 {
-    //printf("MIPS: Unrecognized instruction.\n");
+    (void)m; (void)ir;
+    
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
 }
@@ -1148,18 +1149,21 @@ int decode_lwu     (MIPS *m, uint32_t ir)
 
 int decode_lwl     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
 }
 
 int decode_lwr     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
 }
 
 int decode_ld      (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
@@ -1167,6 +1171,7 @@ int decode_ld      (MIPS *m, uint32_t ir)
 
 int decode_ldl     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
@@ -1174,6 +1179,7 @@ int decode_ldl     (MIPS *m, uint32_t ir)
 
 int decode_ldr     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
@@ -1212,18 +1218,21 @@ int decode_sw      (MIPS *m, uint32_t ir)
 
 int decode_swl     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_OK;
 }
 
 int decode_swr     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_OK;
 }
 
 int decode_sdi     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
@@ -1231,6 +1240,7 @@ int decode_sdi     (MIPS *m, uint32_t ir)
 
 int decode_sdl     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
@@ -1238,6 +1248,7 @@ int decode_sdl     (MIPS *m, uint32_t ir)
 
 int decode_sdr     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_WARNING, "sorry : 64bit CPU unsupported...\n");
     mips_stop(m, MIPS_UNSUPPORTED);
     return MIPS_UNSUPPORTED;
@@ -1245,18 +1256,21 @@ int decode_sdr     (MIPS *m, uint32_t ir)
 
 int decode_break   (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mips_stop(m, MIPS_BREAK);
     return MIPS_BREAK;
 }
 
 int decode_trap    (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mips_stop(m, MIPS_TRAP);
     return MIPS_TRAP;
 }
 
 int decode_cp0     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     /*
     MIPS_Instr i = cp0[(ir & FMT_MASK) >> FMT_SHIFT];
     
@@ -1309,12 +1323,14 @@ int decode_cp1     (MIPS *m, uint32_t ir)
 
 int decode_cp2     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_TRACE, "cop 2\n");
     return MIPS_OK;
 }
 
 int decode_cp3     (MIPS *m, uint32_t ir)
 {
+    (void)m; (void)ir;
     mipsim_printf(IO_TRACE, "cop 3\n");
     return MIPS_OK;
 }
@@ -1375,12 +1391,14 @@ int decode_ctc     (MIPS *m, uint32_t ir)
 
 int decode_bc1     (MIPS *m, uint32_t ir)
 {
-    
-    return MIPS_OK;
+    (void)m; (void)ir;
+    mips_stop(m, MIPS_UNSUPPORTED);
+    return MIPS_UNSUPPORTED;
 }
 
 int decode_fpu     (MIPS *m, uint32_t ir)
 {
-    
-    return MIPS_OK;
+    (void)m; (void)ir;
+    mips_stop(m, MIPS_UNSUPPORTED);
+    return MIPS_UNSUPPORTED;
 }

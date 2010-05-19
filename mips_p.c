@@ -389,21 +389,21 @@ void mips_init_coprocessor(MIPS *m, int n)
     {
         case 0 :
             hw->get_ctrl = _mips_get_ctrl_cp0;
-            hw->get_ctrl = _mips_set_ctrl_cp0;
+            hw->set_ctrl = _mips_set_ctrl_cp0;
             hw->d = malloc(sizeof(MIPS_CP0_Private));
             memset(hw->d, 0, sizeof(MIPS_CP0_Private));
             break;
             
         case 1 :
             hw->get_ctrl = _mips_get_ctrl_fpu;
-            hw->get_ctrl = _mips_set_ctrl_fpu;
+            hw->set_ctrl = _mips_set_ctrl_fpu;
             hw->d = malloc(sizeof(MIPS_FPU_Private));
             memset(hw->d, 0, sizeof(MIPS_FPU_Private));
             break;
             
         default:
             hw->get_ctrl = _mips_get_gpr_cp;
-            hw->get_ctrl = _mips_set_gpr_cp;
+            hw->set_ctrl = _mips_set_gpr_cp;
             hw->d = malloc(sizeof(MIPS_Coprocessor_Private));
             memset(hw->d, 0, sizeof(MIPS_Coprocessor_Private));
             break;

@@ -268,7 +268,7 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
     return 0;
 }
 
-int elf_fread(ELF32_Char **d, FILE *handle, ELF32_Off off, ELF32_Word sz, ELF32_Off min_offset, const char *filename)
+int elf_fread(ELF32_Char **d, FILE *handle, ELF32_Off off, ELF32_Word sz, const char *filename)
 {
     if ( sz <= 0 )
         return 1;
@@ -301,7 +301,7 @@ int elf_fread(ELF32_Char **d, FILE *handle, ELF32_Off off, ELF32_Word sz, ELF32_
     return 0;
 }
 
-int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, ELF32_Off min_offset, const char *filename)
+int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *filename)
 {
     s->s_name      = elf_fget_word(handle, endian);
     s->s_type      = elf_fget_word(handle, endian);
@@ -318,7 +318,7 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, ELF32_Off mi
     
     if ( s->s_type == SHT_STRTAB )
     {
-        int ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, min_offset, filename);
+        int ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, filename);
         
         if ( ret )
             return ret;
@@ -362,7 +362,7 @@ int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
         } else {
             ELF_Section *s = (ELF_Section*)malloc(sizeof(ELF_Section));
             
-            if ( elf_file_load_section(s, handle, endian, min_offset, filename) )
+            if ( elf_file_load_section(s, handle, endian, filename) )
             {
                 free(s);
             } else {
