@@ -47,10 +47,28 @@ int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
     
     if ( *m != NULL )
     {
-        mips_destroy(*m);
-        *m = NULL;
+        /*
+            Create simulator structures
+            TODO : specify arch via a command line switch and alter if needed...
+        */
+        mips_reset(*m);
+    } else {
+        /*
+            Create simulator structures
+            TODO : specify arch via a command line switch...
+        */
+        *m = mips_create(mipsim_config()->arch);
+        
+        if ( *m == NULL )
+        {
+            printf("MIPSim: Failed to allocate memory for MIPS machine\n");
+            return COMMAND_FAIL;
+        }
     }
     
+    /*
+        discard any previously loaded program
+    */
     if ( *f != NULL )
     {
         elf_file_destroy(*f);
@@ -70,18 +88,6 @@ int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
     */
     if ( elf_file_load(*f, argv[1]) )
         return COMMAND_FAIL;
-    
-    /*
-        Create simulator structures
-        TODO : specify arch via a command line switch...
-    */
-    *m = mips_create(mipsim_config()->arch);
-    
-    if ( *m == NULL )
-    {
-        printf("MIPSim: Failed to allocate memory for MIPS machine\n");
-        return COMMAND_FAIL;
-    }
     
     /*
         Map ELF file content to emulated machine memory
@@ -141,10 +147,18 @@ void print_status(MIPS *m)
 
 int shell_run(int argc, char **argv, MIPS *m)
 {
-    (void)argc; (void)argv;
-    
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
+    
+    if ( argc == 2 )
+    {
+        MIPS_Addr addr = strtoul(argv[1], NULL, 0);
+        printf("running from 0x%08x\n", addr);
+        m->hw.set_pc(&m->hw, addr);
+    } else if ( argc != 1 ) {
+        printf("run expects at most one parameter\n");
+        return COMMAND_PARAM_COUNT;
+    }
     
     int ret;
     
@@ -166,20 +180,7 @@ int shell_step(int argc, char **argv, MIPS *m)
     
     if ( argc == 2 )
     {
-        const char *param = argv[1];
-        
-        while ( *param != '\0' )
-        {
-            if ( *param < '0' || *param > '9' )
-            {
-                printf("step expects an integer as optional parameter\n");
-                return COMMAND_PARAM_TYPE;
-            }
-            
-            n = n * 10 + (*param - '0');
-            
-            ++param;
-        }
+        n = strtoul(argv[1], NULL, 0);
     } else if ( argc != 1 ) {
         printf("step expects at most one integer parameter\n");
         return COMMAND_PARAM_COUNT;
