@@ -107,7 +107,7 @@ QByteArray command(int target, const QByteArray& command)
     
     while ( !at_prompt[target] )
     {
-        p->waitForReadyRead(100);
+        p->waitForReadyRead(-1);
         tmp += p->readAll();
         
         at_prompt[target] = tmp.endsWith(prompt);
@@ -116,14 +116,13 @@ QByteArray command(int target, const QByteArray& command)
     //qDebug("%d> %s", target, qPrintable(command));
     
     p->write(command);
-    p->waitForBytesWritten(100);
     
     QByteArray ans;
     at_prompt[target] = false;
     
     while ( !at_prompt[target] && (p->state() == QProcess::Running) )
     {
-        p->waitForReadyRead(100);
+        p->waitForReadyRead(200);
         ans += p->readAll();
         
         if ( ans.endsWith(prompt) )
@@ -176,14 +175,14 @@ void split_ws(QByteArray s, QRangeList& l)
     
     while ( idx < len )
     {
-        if ( isspace(d[idx]) )
+        if ( d[idx] > ' ' )
         {
+            ++idx;
+        } else {
             if ( last != idx )
                 l << last << (idx - last);
             
             last = ++idx;
-        } else {
-            ++idx;
         }
     }
     
@@ -205,18 +204,19 @@ quint32 hex_value(const char *d, int length, bool *ok)
     }
     
     do {
-        char c = *d;
+        unsigned char c = *d - '0';
+        
+        if ( c > 9 ) {
+            c &= ~('a' - 'A');
+            c -=  ('A' - '0');
+            c += 10;
+            
+            if ( c > 15 )
+                return 0;
+        }
         
         n <<= 4;
-        
-        if ( c >= '0' && c <= '9' )
-            n += c - '0';
-        else if ( c >= 'a' && c <= 'f' )
-            n += c - 'a' + 10;
-        else if ( c >= 'A' && c <= 'F' )
-            n += c - 'A' + 10;
-        else
-            return 0;
+        n += c;
         
         ++d;
     } while ( --length );
