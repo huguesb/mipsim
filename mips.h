@@ -110,6 +110,8 @@ enum {
     MIPS_E_ADDRESS_ERROR,
 };
 
+typedef void (*_reset_p)(MIPS_Processor *p);
+
 typedef void (*_sig_ex)(MIPS_Processor *p, int exception);
 
 typedef uint32_t (*_fetch_instr)(MIPS_Processor *p, int *stat);
@@ -121,6 +123,7 @@ typedef MIPS_Native (*_get_gpr_p)(MIPS_Processor *p, int gpr);
 typedef void (*_set_gpr_p)(MIPS_Processor *p, int gpr, MIPS_Native value);
 
 struct _MIPS_Processor {
+    _reset_p reset;
     
     _fetch_instr fetch;
     
@@ -141,10 +144,13 @@ struct _MIPS_Processor {
     void *d;
 };
 
+typedef void (*_reset_cp)(MIPS_Coprocessor *p);
+
 typedef MIPS_Native (*_get_gpr_cp)(MIPS_Coprocessor *p, int gpr);
 typedef void (*_set_gpr_cp)(MIPS_Coprocessor *p, int gpr, MIPS_Native value);
 
 struct _MIPS_Coprocessor {
+    _reset_cp reset;
     
     _get_gpr_cp get_reg;
     _set_gpr_cp set_reg;
@@ -214,6 +220,7 @@ const char* mips_fpr_name(int reg);
 
 MIPS* mips_create(int arch);
 void mips_destroy(MIPS *m);
+void mips_reset(MIPS *m);
 
 int mips_exec(MIPS *m, uint32_t n);
 void mips_stop(MIPS *m, int reason);

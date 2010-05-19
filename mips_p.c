@@ -26,6 +26,17 @@ typedef struct _MIPS_Processor_Private {
     uint32_t ir;
 } MIPS_Processor_Private;
 
+void _mips_reset_p(MIPS_Processor *p)
+{
+    MIPS_Processor_Private *d = (MIPS_Processor_Private*)p->d;
+    
+    d->pc = 0;
+    memset(&d->r, 0, 32 * sizeof(MIPS_Native));
+    d->hi = d->lo = 0;
+    d->hi_lo_status = 0;
+    d->ir = 0;
+}
+
 MIPS_Native _mips_get_pc(MIPS_Processor *p)
 {
     if ( p != NULL && p->d != NULL )
@@ -164,6 +175,8 @@ void mips_init_processor(MIPS *m)
 {
     MIPS_Processor *hw = &m->hw;
     
+    hw->reset = _mips_reset_p;
+    
     hw->signal_exception = _mips_sig_ex;
     
     hw->get_pc = _mips_get_pc;
@@ -226,6 +239,22 @@ typedef struct _MIPS_FPU_Private {
     
     MIPS_Native fir, fcsr;
 } MIPS_FPU_Private;
+
+void _mips_reset_cp(MIPS_Coprocessor *p)
+{
+    MIPS_Coprocessor_Private *d = (MIPS_Coprocessor_Private*)p->d;
+    
+    memset(&d->r, 0, 32 * sizeof(MIPS_Native));
+}
+
+void _mips_reset_fpu(MIPS_Coprocessor *p)
+{
+    _mips_reset_cp(p);
+    
+    MIPS_FPU_Private *d = (MIPS_FPU_Private*)p->d;
+    
+    d->fir = d->fcsr = 0;
+}
 
 MIPS_Native _mips_get_gpr_cp(MIPS_Coprocessor *p, int gpr)
 {
@@ -382,6 +411,8 @@ void mips_init_coprocessor(MIPS *m, int n)
 {
     MIPS_Coprocessor *hw = &m->cp[n];
     
+    hw->reset   = _mips_reset_cp;
+    
     hw->get_reg = _mips_get_gpr_cp;
     hw->set_reg = _mips_set_gpr_cp;
     
@@ -395,6 +426,7 @@ void mips_init_coprocessor(MIPS *m, int n)
             break;
             
         case 1 :
+            hw->reset    = _mips_reset_fpu;
             hw->get_ctrl = _mips_get_ctrl_fpu;
             hw->set_ctrl = _mips_set_ctrl_fpu;
             hw->d = malloc(sizeof(MIPS_FPU_Private));

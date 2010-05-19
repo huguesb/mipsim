@@ -86,13 +86,32 @@ MIPS* mips_create(int arch)
     return m;
 }
 
+void mips_reset(MIPS *m)
+{
+    if ( m == NULL )
+        return;
+    
+    m->cp[3].reset(&m->cp[3]);
+    m->cp[2].reset(&m->cp[2]);
+    m->cp[1].reset(&m->cp[1]);
+    m->cp[0].reset(&m->cp[0]);
+    m->hw.reset(&m->hw);
+    
+    m->mem.unmap(&m->mem);
+    
+    mips_init_memory(m);
+}
+
 void mips_destroy(MIPS *m)
 {
-    mips_cleanup_coprocessor(&m->cp[3]);
-    mips_cleanup_coprocessor(&m->cp[2]);
-    mips_cleanup_coprocessor(&m->cp[1]);
-    mips_cleanup_coprocessor(&m->cp[0]);
+    if ( m == NULL )
+        return;
+    
     mips_cleanup_processor(&m->hw);
+    mips_cleanup_coprocessor(&m->cp[0]);
+    mips_cleanup_coprocessor(&m->cp[1]);
+    mips_cleanup_coprocessor(&m->cp[2]);
+    mips_cleanup_coprocessor(&m->cp[3]);
     
     m->mem.unmap(&m->mem);
     
