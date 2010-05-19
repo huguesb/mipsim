@@ -1,5 +1,5 @@
 
-TARGET = mipsim
+TARGET = simips
 
 CONFIG += debug
 CONFIG -= qt
