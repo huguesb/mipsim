@@ -14,7 +14,7 @@
 
 int mips_load_elf(MIPS *m, ELF_File *f)
 {
-    ELF32_Addr last = 0xFFFFFFFF;
+    ELF32_Addr last = 0;
     
     if ( f->header->e_type == ET_EXEC )
     {
@@ -58,7 +58,7 @@ int mips_load_elf(MIPS *m, ELF_File *f)
     }
     
     // give it some slack as newlib apparently use data beyond .bss as if it was normal...
-    if ( last != 0xFFFFFFFF )
+    if ( last )
         m->mem.map_alloc(&m->mem, last, 0x1000);
     
     return 0;
