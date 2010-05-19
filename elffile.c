@@ -57,6 +57,9 @@ ELF_File* elf_file_create()
 
 void elf_file_cleanup(ELF_File *f)
 {
+    if ( f == NULL )
+        return;
+    
     /* free section data */
     for ( ELF32_Word i = 0; i < f->nsection; ++i )
     {
@@ -93,11 +96,48 @@ void elf_file_cleanup(ELF_File *f)
 
 int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
 {
+    // identifier (only part which can be read without being endian-aware)
     if ( fread(hdr->e_ident, sizeof(ELF32_Char), EI_NIDENT, handle) != (sizeof(ELF32_Char) * EI_NIDENT) )
     {
         mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : failed to read identifier\n", filename);
         return 1;
     }
+    
+    /*
+        Some macros for error checking
+    */
+    #define ELF_CHECK_EQU(s, val, expect) \
+        if ( val != expect ) \
+        { \
+            mipsim_printf(IO_WARNING, \
+                        "ELF:%s: Invalid header. Expected " s " %i, found %i\n", \
+                        filename, \
+                        expect, \
+                        val); \
+            return 1; \
+        }
+    #define ELF_CHECK_EITHER(s, val, e1, e2) \
+        if ( val != expect ) \
+        { \
+            mipsim_printf(IO_WARNING, \
+                        "ELF:%s: Invalid header. Expected " s " %i or %i, found %i\n", \
+                        filename, \
+                        e1, \
+                        e2, \
+                        val); \
+            return 1; \
+        }
+    #define ELF_CHECK_SUP(s, val, expect) \
+        if ( val < expect ) \
+        { \
+            mipsim_printf(IO_WARNING, \
+                        "ELF:%s: Invalid header. Expected " s " expected at least %i, found %i\n", \
+                        filename, \
+                        expect, \
+                        val); \
+            return 1; \
+        }
+    
     
     if ( hdr->e_ident[EI_MAG0] != ELFMAG0 ||
          hdr->e_ident[EI_MAG1] != ELFMAG1 ||
@@ -108,26 +148,16 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
         return 1;
     }
     
-    if ( hdr->e_ident[EI_CLASS] != ELFCLASS32 )
-    {
-        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : expected class %i, found %i\n", filename, ELFCLASS32, hdr->e_ident[EI_CLASS]);
-        return 1;;
-    }
-    
-    if ( hdr->e_ident[EI_VERSION] != EV_CURRENT )
-    {
-        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : expected version %i, found %i\n", filename, EV_CURRENT, hdr->e_ident[EI_VERSION]);
-        return 1;
-    }
+    ELF_CHECK_EQU("class",   hdr->e_ident[EI_CLASS], ELFCLASS32)
+    ELF_CHECK_EQU("version", hdr->e_ident[EI_VERSION], EV_CURRENT)
     
     const ELF32_Char endian = hdr->e_ident[EI_DATA];
     
-    if ( endian != ELFDATA2LSB && endian != ELFDATA2MSB )
-    {
-        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : unknown data format %2x\n", filename, endian);
-        return 1;
-    }
+    ELF_CHECK_EQU("format", endian, ELFDATA2MSB)
     
+    /*
+        read rest of header data, endian-aware
+    */
     hdr->e_type      = elf_fget_half(handle, endian);
     hdr->e_machine   = elf_fget_half(handle, endian);
     hdr->e_version   = elf_fget_word(handle, endian);
@@ -142,19 +172,7 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
     hdr->e_shnum     = elf_fget_half(handle, endian);
     hdr->e_shstrndx  = elf_fget_half(handle, endian);
     
-    if ( hdr->e_version != EV_CURRENT )
-    {
-        mipsim_printf(IO_WARNING, "ELF:%s: Invalid header : expected version %i, found %i\n", filename, EV_CURRENT, hdr->e_version);
-        return 1;
-    }
-    
-    #define ELF_CHECK_EQU(s, val, expect) \
-        if ( val != expect ) \
-        { mipsim_printf(IO_WARNING, "ELF:%s: Invalid " s " expected %i, found %i\n", filename, expect, val); return 1; }
-    #define ELF_CHECK_SUP(s, val, expect) \
-        if ( val < expect ) \
-        { mipsim_printf(IO_WARNING, "ELF:%s: Invalid " s " expected at least %i, found %i\n", filename, expect, val); return 1; }
-    
+    ELF_CHECK_EQU("version", hdr->e_version, EV_CURRENT)
     ELF_CHECK_EQU("type"   , hdr->e_type, ET_EXEC)
     ELF_CHECK_EQU("machine", hdr->e_machine, EM_MIPS)
     
@@ -170,7 +188,7 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
     return 0;
 }
 
-int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, ELF32_Off min_offset, const char *filename)
+int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, const char *filename)
 {
     s->p_type   = elf_fget_word(handle, endian);
     s->p_offset = elf_fget_word(handle, endian);
@@ -188,12 +206,6 @@ int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, ELF32_Off mi
         if ( s->p_memsz < s->p_filesz )
         {
             mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : suspicious segment size\n", filename);
-            return 1;
-        }
-        
-        if ( s->p_offset < min_offset )
-        {
-            mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : suspicious segment offset\n", filename);
             return 1;
         }
         
@@ -237,6 +249,8 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
     const ELF32_Char endian = elf->header->e_ident[EI_DATA];
     const ELF32_Off min_offset = elf->header->e_phoff + elf->header->e_phentsize * (elf->header->e_phnum + 1);
     
+    ELF32_Addr first_addr = -1, last_addr = 0;
+    
     if ( elf->segments )
     {
         elf->nsegment = 0;
@@ -246,18 +260,60 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
             ELF32_Word soff = elf->header->e_phoff + elf->header->e_phentsize * i;
             
             if ( soff & 3 )
-                mipsim_printf(IO_WARNING, "ELF:%s: Suspicious (un)alignement\n", filename);
+            {
+                mipsim_printf(IO_WARNING,
+                              "ELF:%s: Suspicious (un)alignement\n",
+                              filename);
+                return 1;
+            }
             
             if ( fseek(handle, soff, SEEK_SET) )
             {
-                mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : broken program table\n", filename);
+                mipsim_printf(IO_WARNING,
+                              "ELF:%s: Invalid file : broken program table\n",
+                              filename);
+                return 1;
             } else {
                 ELF_Segment *s = (ELF_Segment*)malloc(sizeof(ELF_Segment));
                 
-                if ( elf_file_load_segment(s, handle, endian, min_offset, filename) )
+                if ( elf_file_load_segment(s, handle, endian, filename) )
                 {
                     free(s);
                 } else {
+                    #define intersect(a, b, c, d) (((c) < (b)) && ((d) > (a)))
+                    
+                    // cheap overlap check
+                    if ( intersect( first_addr, last_addr,
+                                    s->p_vaddr, s->p_vaddr + s->p_memsz)
+                       )
+                    {
+                        // accurate test required...
+                        for ( ELF32_Word k = 0; k < elf->nsegment; ++k )
+                        {
+                            ELF_Segment *sk = elf->segments[k];
+                            
+                            if ( intersect( sk->p_vaddr,
+                                            sk->p_vaddr + sk->p_memsz,
+                                            s->p_vaddr,
+                                            s->p_vaddr + s->p_memsz
+                                          )
+                                )
+                            {
+                                mipsim_printf(IO_WARNING,
+                                              "ELF:%s: Overlapping segments\n",
+                                              filename);
+                                return 1;
+                            }
+                        }
+                    } else {
+                        if ( s->p_vaddr < first_addr )
+                            first_addr = s->p_vaddr;
+                        if ( s->p_vaddr + s->p_memsz > last_addr )
+                            last_addr  = s->p_vaddr + s->p_memsz;
+                    }
+                    
+                    #undef intersect
+                    
                     elf->segments[elf->nsegment] = s;
                     ++elf->nsegment;
                 }
@@ -449,8 +505,10 @@ int elf_file_load(ELF_File *elf, const char *filename)
 
 void elf_file_destroy(ELF_File *f)
 {
-    elf_file_cleanup(f);
-    
-    free(f);
+    if ( f != NULL )
+    {
+        elf_file_cleanup(f);
+        free(f);
+    }
 }
 

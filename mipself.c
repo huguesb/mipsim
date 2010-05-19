@@ -14,24 +14,52 @@
 
 int mips_load_elf(MIPS *m, ELF_File *f)
 {
-    for ( ELF32_Word i = 0; i < f->nsegment; ++i )
+    ELF32_Addr last = 0xFFFFFFFF;
+    
+    if ( f->header->e_type == ET_EXEC )
     {
-        ELF_Segment *s = f->segments[i];
+        // load segments whenever possible
+        for ( ELF32_Word i = 0; i < f->nsegment; ++i )
+        {
+            ELF_Segment *s = f->segments[i];
+            
+            if ( s == NULL )
+                continue;
+            
+            // Load sections to fine tune RO/RW status...
+            mipsim_printf(IO_DEBUG, "Loading segment %i : [%08x-%08x]\n",
+                          i, s->p_vaddr, s->p_vaddr + s->p_memsz);
+            
+            m->mem.map_rw(&m->mem, s->p_vaddr, s->p_memsz, s->p_data);
+            
+            if ( last < s->p_vaddr + s->p_memsz )
+                last = s->p_vaddr + s->p_memsz;
+        }
         
-        if ( s == NULL )
-            continue;
-        
-        // Load sections to fine tune RO/RW status...
-        mipsim_printf(IO_DEBUG, "Loading segment %i : [%08x-%08x]\n", i, s->p_vaddr, s->p_vaddr + s->p_memsz);
-        
-        m->mem.map_rw(&m->mem, s->p_vaddr, s->p_memsz, s->p_data);
-        
-        // give it some slack as newlib apparently use data beyond .bss as if it was normal...
-        m->mem.map_alloc(&m->mem, s->p_vaddr + s->p_memsz, 0x1000);
+        if ( f->header )
+            m->hw.set_pc(&m->hw, f->header->e_entry);
+    } else if ( f->header->e_type == ET_REL ) {
+        for ( ELF32_Word i = 0; i < f->nsection; ++i )
+        {
+            ELF_Section *s = f->sections[i];
+            
+            if ( s == NULL || !(s->s_flags & SHF_ALLOC) )
+                continue;
+            
+            // Load sections to fine tune RO/RW status...
+            mipsim_printf(IO_DEBUG, "Loading section %i : [%08x-%08x]\n",
+                          i, s->s_addr, s->s_addr + s->s_size);
+            
+            m->mem.map_rw(&m->mem, s->s_addr, s->s_size, s->s_data);
+            
+            if ( last < s->s_addr + s->s_size)
+                last = s->s_addr + s->s_size;
+        }
     }
     
-    if ( f->header )
-        m->hw.set_pc(&m->hw, f->header->e_entry);
+    // give it some slack as newlib apparently use data beyond .bss as if it was normal...
+    if ( last != 0xFFFFFFFF )
+        m->mem.map_alloc(&m->mem, last, 0x1000);
     
     return 0;
 }
