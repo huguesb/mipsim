@@ -5,7 +5,7 @@
 **  All rights reserved.
 **  
 **  This file may be used under the terms of the BSD license.
-**  Refer to the accompanying COPYING file.
+**  Refer to the accompanying COPYING file for legalese.
 ****************************************************************************/
 
 #ifndef _ELF_FILE_H_
@@ -181,13 +181,31 @@ typedef struct {
 } ELF_Segment;
 
 typedef struct {
-    ELF32_Word st_name;
-    ELF32_Addr st_value;
-    ELF32_Word st_size;
-    ELF32_Char st_info;
-    ELF32_Char st_other;
-    ELF32_Half st_shndx;
+    ELF32_Word s_name;
+    ELF32_Addr s_value;
+    ELF32_Word s_size;
+    ELF32_Char s_info;
+    ELF32_Char s_other;
+    ELF32_Half s_shndx;
 } ELF_Sym;
+
+#define ELF32_ST_BIND(i)   ((i)>>4)
+#define ELF32_ST_TYPE(i)   ((i)&0xf)
+#define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
+
+enum {
+    R_386_NONE      = 0,
+    R_386_32        = 1,
+    R_386_PC32      = 2,
+    R_386_GOT32     = 3,
+    R_386_PLT32     = 4,
+    R_386_COPY      = 5,
+    R_386_GLOB_DAT  = 6,
+    R_386_JMP_SLOT  = 7,
+    R_386_RELATIVE  = 8,
+    R_386_GOTOFF    = 9,
+    R_386_GOTPC     = 10
+};
 
 typedef struct {
     ELF32_Addr r_offset;
@@ -222,8 +240,11 @@ typedef struct {
 ELF_File* elf_file_create();
 void elf_file_destroy(ELF_File *elf);
 
+const char* elf_section_name(ELF_File *elf, ELF32_Word n, ELF32_Word *size);
+
 int elf_file_load(ELF_File *elf, const char *filename);
 
-int elf_file_relocate(ELF_File *elf, ELF32_Addr text_base, ELF32_Addr data_base);
+typedef ELF32_Addr (*addr_for_name)(const char *name, ELF32_Word size);
+int elf_file_relocate(ELF_File *elf, addr_for_name section_addr);
 
 #endif
