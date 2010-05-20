@@ -1,6 +1,13 @@
 
 MIPSim : a simple MIPS simulator written as a school project.
 
+License
+-------
+
+The source code is available under BSD license. However, due to the dependency
+on other libraries (most notably GNU readline), executables are licensed under
+the terms of the GPL.
+
 
 Build instructions
 ------------------
@@ -18,12 +25,21 @@ $ qmake && make
 Usage
 -----
 
-mipsim [-options] program
+simips [options] program
 
 Options :
-  -f freq    :
-  -d         :
-  -c file    : 
+  -t addr    : specify base address of text section (to load relocatable binaries)
+  -d addr    : specify base address of data section (to load relocatable binaries)
+  --debug    : enable debug output
+  --version  : 
+
+
+Documentation
+-------------
+
+You can obtain API docs using Doxygen
+
+$ doxygen
 
 
 Limitations
@@ -34,4 +50,6 @@ MIPSim can only run valid ELF32 binaries targeted to the MIPS I-IV architecture.
 Such binaries can be obtained via a cross-compiler toolchain (e.g GCC build for
 mips-elf target)
 
-MIPSim is not very accurate in terms of execution speed and memory timings.
+MIPSim does not emulate a MIPS pipeline and is not particularly accurate in terms
+of instruction / memory timings : it just goes through the opcodes as fast as it
+can without any effort to "harmonize" the time spent on each opcode...
