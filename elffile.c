@@ -15,29 +15,89 @@
 
 #include "io.h"
 
+#define intersect(a, b, c, d) (((c) < (b)) && ((d) > (a)))
+
+/*!
+    \struct ELF_File
+    \brief In-memory representation of an ELF binary
+*/
+
+/*!
+    \struct ELF_Header
+    \brief In-memory representation of an ELF binary header
+*/
+
+/*!
+    \struct ELF_Section
+    \brief In-memory representation of an ELF section
+*/
+
+/*!
+    \struct ELF_Segment
+    \brief In-memory representation of an ELF program segment
+*/
+
+/*!
+    \struct ELF_Sym
+    \brief Entry of a symbol table
+*/
+
+/*!
+    \struct ELF_Rel
+    \brief Entry of a SHT_REL relocation table
+*/
+
+/*!
+    \struct ELF_Rela
+    \brief Entry of a SHT_RELA relocation table
+*/
+
+/*!
+    \internal
+    \brief Load a halfword from an ELF file
+    \param f file being loaded
+    \param endian endianness of file
+    \return the halfword at the current position
+    
+    The current position in the input file is incremented twice
+*/
 ELF32_Half elf_fget_half(FILE *f, ELF32_Char endian)
 {
-    ELF32_Char c0 = fgetc(f);
-    ELF32_Char c1 = fgetc(f);
+    int c0 = fgetc(f) & 0x00FF;
+    int c1 = fgetc(f) & 0x00FF;
     
     return endian == ELFDATA2MSB ?
             (c0 << 8) | c1 :
             (c1 << 8) | c0;
 }
 
-
+/*!
+    \internal
+    \brief Load a word from an ELF file
+    \param f file being loaded
+    \param endian endianness of file
+    \return the word at the current position
+    
+    The current position in the input file is incremented four times
+*/
 ELF32_Word elf_fget_word(FILE *f, ELF32_Char endian)
 {
-    ELF32_Char c0 = fgetc(f);
-    ELF32_Char c1 = fgetc(f);
-    ELF32_Char c2 = fgetc(f);
-    ELF32_Char c3 = fgetc(f);
+    int c0 = fgetc(f) & 0x00FF;
+    int c1 = fgetc(f) & 0x00FF;
+    int c2 = fgetc(f) & 0x00FF;
+    int c3 = fgetc(f) & 0x00FF;
     
     return endian == ELFDATA2MSB ?
             (c0 << 24) | (c1 << 16) | (c2 << 8) | c3 :
             (c3 << 24) | (c2 << 16) | (c1 << 8) | c0;
 }
 
+/*!
+    \brief Create a structure suitable for ELF file loading
+    \return NULL on failure, allocated structure otherwise
+    
+    The caller is responsible for destroying the created structure via elf_file_destroy
+*/
 ELF_File* elf_file_create()
 {
     ELF_File *f = (ELF_File*)malloc(sizeof(ELF_File));
@@ -55,6 +115,15 @@ ELF_File* elf_file_create()
     return f;
 }
 
+/*!
+    \internal
+    \brief Load a segment from an ELF file
+    \param s structure in which to store data
+    \param handle file being loaded
+    \param endian endianness of file
+    \param filename path of file being loaded
+    \return 0 on succes
+*/
 void elf_file_cleanup(ELF_File *f)
 {
     if ( f == NULL )
@@ -94,6 +163,30 @@ void elf_file_cleanup(ELF_File *f)
     f->shstrtab = NULL;
 }
 
+/*!
+    \brief Destroy an ELF file
+    \param elf ELF file to destroy
+    
+    Release all resources allocated by elf_file_load and elf_file_create
+*/
+void elf_file_destroy(ELF_File *elf)
+{
+    if ( elf != NULL )
+    {
+        elf_file_cleanup(elf);
+        free(elf);
+    }
+}
+
+/*!
+    \internal
+    \brief Load a segment from an ELF file
+    \param s structure in which to store data
+    \param handle file being loaded
+    \param endian endianness of file
+    \param filename path of file being loaded
+    \return 0 on succes
+*/
 int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
 {
     // identifier (only part which can be read without being endian-aware)
@@ -117,7 +210,7 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
             return 1; \
         }
     #define ELF_CHECK_EITHER(s, val, e1, e2) \
-        if ( val != expect ) \
+        if ( val != e1 && val != e2 ) \
         { \
             mipsim_printf(IO_WARNING, \
                         "ELF:%s: Invalid header. Expected " s " %i or %i, found %i\n", \
@@ -131,7 +224,7 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
         if ( val < expect ) \
         { \
             mipsim_printf(IO_WARNING, \
-                        "ELF:%s: Invalid header. Expected " s " expected at least %i, found %i\n", \
+                        "ELF:%s: Invalid header. Expected " s " at least %i, found %i\n", \
                         filename, \
                         expect, \
                         val); \
@@ -173,21 +266,35 @@ int elf_file_load_header(ELF_Header *hdr, FILE *handle, const char *filename)
     hdr->e_shstrndx  = elf_fget_half(handle, endian);
     
     ELF_CHECK_EQU("version", hdr->e_version, EV_CURRENT)
-    ELF_CHECK_EQU("type"   , hdr->e_type, ET_EXEC)
+    ELF_CHECK_EITHER("type", hdr->e_type, ET_EXEC, ET_REL)
     ELF_CHECK_EQU("machine", hdr->e_machine, EM_MIPS)
     
     ELF_CHECK_SUP("header size", hdr->e_ehsize, sizeof(ELF_Header))
     
     if ( hdr->e_shoff )
+    {
         ELF_CHECK_SUP("section table offset", hdr->e_shoff, hdr->e_ehsize)
-    if ( hdr->e_phoff )
-        ELF_CHECK_SUP("program table offset", hdr->e_phoff, hdr->e_ehsize)
+        ELF_CHECK_SUP("section header size", hdr->e_shentsize, 10 * sizeof(ELF32_Word))
+    }
     
-    ELF_CHECK_SUP("program header size", hdr->e_phentsize, 8 * sizeof(ELF32_Word))
+    if ( hdr->e_phoff )
+    {
+        ELF_CHECK_SUP("program table offset", hdr->e_phoff, hdr->e_ehsize)
+        ELF_CHECK_SUP("program header size", hdr->e_phentsize, 8 * sizeof(ELF32_Word))
+    }
     
     return 0;
 }
 
+/*!
+    \internal
+    \brief Load a segment from an ELF file
+    \param s structure in which to store data
+    \param handle file being loaded
+    \param endian endianness of file
+    \param filename path of file being loaded
+    \return 0 on succes
+*/
 int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, const char *filename)
 {
     s->p_type   = elf_fget_word(handle, endian);
@@ -235,6 +342,16 @@ int elf_file_load_segment(ELF_Segment *s, FILE *handle, int endian, const char *
     return 0;
 }
 
+
+/*!
+    \internal
+    \brief Load all segments from an ELF file
+    \param elf structure in which to store data
+    \param handle file being loaded
+    \param endian endianness of file
+    \param filename path of file being loaded
+    \return 0 on succes
+*/
 int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
 {
     if ( fseek(handle, elf->header->e_phoff, SEEK_SET) )
@@ -280,8 +397,6 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
                 {
                     free(s);
                 } else {
-                    #define intersect(a, b, c, d) (((c) < (b)) && ((d) > (a)))
-                    
                     // cheap overlap check
                     if ( intersect( first_addr, last_addr,
                                     s->p_vaddr, s->p_vaddr + s->p_memsz)
@@ -312,8 +427,6 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
                             last_addr  = s->p_vaddr + s->p_memsz;
                     }
                     
-                    #undef intersect
-                    
                     elf->segments[elf->nsegment] = s;
                     ++elf->nsegment;
                 }
@@ -324,6 +437,18 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
     return 0;
 }
 
+/*!
+    \internal
+    \brief Load section data from an ELF file
+    \param d where to store data
+    \param handle file being loaded
+    \param off offset of data in file
+    \param sz size of data to read
+    \param filename path of file being loaded
+    \return 0 on succes
+    
+    Caller is responsible for freeing the allocated data
+*/
 int elf_fread(ELF32_Char **d, FILE *handle, ELF32_Off off, ELF32_Word sz, const char *filename)
 {
     if ( sz <= 0 )
@@ -357,6 +482,15 @@ int elf_fread(ELF32_Char **d, FILE *handle, ELF32_Off off, ELF32_Word sz, const 
     return 0;
 }
 
+/*!
+    \internal
+    \brief Load a section from an ELF file
+    \param s structure in which to store data
+    \param handle file being loaded
+    \param endian endianness of file
+    \param filename path of file being loaded
+    \return 0 on succes
+*/
 int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *filename)
 {
     s->s_name      = elf_fget_word(handle, endian);
@@ -371,21 +505,36 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
     s->s_entsize   = elf_fget_word(handle, endian);
     
     s->s_data      = NULL;
+    s->s_reloc     = 0;
+    
+    int ret = 0;
     
     if ( s->s_type == SHT_STRTAB )
     {
-        int ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, filename);
-        
-        if ( ret )
-            return ret;
-        
+        ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, filename);
     } else if ( s->s_type == SHT_SYMTAB ) {
         
+    } else if ( s->s_type == SHT_REL ) {
+        
+    } else if ( s->s_type == SHT_RELA ) {
+        
+    } else if ( s->s_type == SHT_PROGBITS ) {
+        ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, filename);
+    } else if ( s->s_flags & SHF_ALLOC ) {
+        ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, filename);
     }
     
-    return 0;
+    return ret;
 }
 
+/*!
+    \internal
+    \brief Load all sections from an ELF file
+    \param elf structure in which to store data
+    \param handle file being loaded
+    \param filename path of file being loaded
+    \return 0 on succes
+*/
 int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
 {
     if ( fseek(handle, elf->header->e_shoff, SEEK_SET) )
@@ -403,15 +552,19 @@ int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
     const ELF32_Off min_offset = elf->header->e_shoff + elf->header->e_shentsize * (elf->header->e_shnum + 1);
     
     elf->sections = (ELF_Section**)malloc(elf->header->e_shnum * sizeof(ELF_Section*));
-    elf->nsection = 0;
+    elf->nsection = elf->header->e_shnum;
+    
+    ELF32_Addr first_addr = -1, last_addr = 0;
     
     ELF32_Word soff = elf->header->e_shoff;
     
     if ( (soff & 3) || (elf->header->e_shentsize & 3) )
         mipsim_printf(IO_WARNING, "ELF:%s: Suspicious section (un)alignement\n", filename);
     
-    for ( int i = 0; i < elf->header->e_shnum; ++i, soff += elf->header->e_shentsize )
+    for ( int i = 0; i < elf->nsection; ++i, soff += elf->header->e_shentsize )
     {
+        elf->sections[i] = NULL;
+        
         if ( fseek(handle, soff, SEEK_SET) )
         {
             mipsim_printf(IO_WARNING, "ELF:%s: Invalid file : broken section table\n", filename);
@@ -422,13 +575,47 @@ int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
             {
                 free(s);
             } else {
-                elf->sections[elf->nsection] = s;
-                ++elf->nsection;
-                
-                if ( i == elf->header->e_shstrndx && s->s_type == SHT_STRTAB )
+                // overlap check for sections with an absolute address
+                if ( s->s_addr )
                 {
-                    elf->shstrtab = s;
+                    // cheap overlap check
+                    if ( intersect( first_addr, last_addr,
+                                    s->s_addr, s->s_addr + s->s_size)
+                        )
+                    {
+                        // accurate test required...
+                        for ( ELF32_Word k = 0; k < elf->nsection; ++k )
+                        {
+                            ELF_Section *sk = elf->sections[k];
+                            
+                            if ( sk != NULL && sk->s_addr &&
+                                intersect( sk->s_addr,
+                                            sk->s_addr + sk->s_size,
+                                            s->s_addr,
+                                            s->s_addr + s->s_size
+                                            )
+                                )
+                            {
+                                mipsim_printf(IO_WARNING,
+                                                "ELF:%s: Overlapping sections %d & %d\n",
+                                                filename, k, i);
+                                return 1;
+                            }
+                        }
+                    } else {
+                        if ( s->s_addr < first_addr )
+                            first_addr = s->s_addr;
+                        if ( s->s_addr + s->s_size > last_addr )
+                            last_addr  = s->s_addr + s->s_size;
+                    }
+                    
                 }
+                
+                elf->sections[i] = s;
+                
+                // keep track of SectionHeaderSTRingTABle
+                if ( i == elf->header->e_shstrndx && s->s_type == SHT_STRTAB )
+                    elf->shstrtab = s;
             }
         }
     }
@@ -439,18 +626,34 @@ int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
     {
         ELF_Section *s = elf->sections[i];
         
-        mipsim_printf(IO_DEBUG, "%s :\n", sst ? sst->s_data + s->s_name : NULL);
-        mipsim_printf(IO_DEBUG, "\tflags : %c%c%c\n",
-               s->s_type & SHF_ALLOC ? 'r' : '-',
-               s->s_type & SHF_WRITE ? 'w' : '-',
-               s->s_type & SHF_EXECINSTR ? 'x' : '-'
+        mipsim_printf(IO_DEBUG, "[%2d] ", i);
+        
+        if ( s != NULL )
+        {
+            mipsim_printf(IO_DEBUG, "%20s : ", sst ? sst->s_data + s->s_name : NULL);
+            
+            mipsim_printf(IO_DEBUG, "%c%c%c [%08x]",
+                (s->s_flags & SHF_ALLOC) ? 'a' : '-',
+                (s->s_flags & SHF_WRITE) ? 'w' : '-',
+                (s->s_flags & SHF_EXECINSTR) ? 'x' : '-'
                );
-        mipsim_printf(IO_DEBUG, "\tvaddr : 0x%08x-0x%08x\n", s->s_addr, s->s_addr + s->s_size);
+            mipsim_printf(IO_DEBUG, " vaddr : 0x%08x-0x%08x\n", s->s_addr, s->s_addr + s->s_size);
+        } else {
+            mipsim_printf(IO_DEBUG, "              (null)\n");
+        }
     }
     
     return 0;
 }
 
+/*!
+    \brief Load the contents of an ELF file into memory
+    \param elf Structure in which data will be stored
+    \param filename Path to file to load
+    \return 0 on success
+    
+    Not all sections are loaded, only what makes sense for the simulator...
+*/
 int elf_file_load(ELF_File *elf, const char *filename)
 {
     if ( elf == NULL )
@@ -479,36 +682,38 @@ int elf_file_load(ELF_File *elf, const char *filename)
     
     int exit_code = elf_file_load_header(elf->header, handle, filename);
     
-    if ( exit_code )
-    {
+    if ( !exit_code )
+       exit_code = elf_file_load_sections(elf, handle, filename);
+    else {
         free(elf->header);
         elf->header = NULL;
-    } else {
-        exit_code = elf_file_load_sections(elf, handle, filename);
-        
-        if ( exit_code )
-        {
-            mipsim_printf(IO_WARNING, "ELF:%s: Errors encountered while loading ELF sections\n", filename);
-        } else {
-            exit_code = elf_file_load_segments(elf, handle, filename);
-            
-            if ( exit_code )
-            {
-                mipsim_printf(IO_WARNING, "ELF:%s: Errors encountered while loading program segements\n", filename);
-            }
-        }
     }
+    
+    if ( !exit_code )
+        exit_code = elf_file_load_segments(elf, handle, filename);
     
     fclose(handle);
     return exit_code;
 }
 
-void elf_file_destroy(ELF_File *f)
+/*!
+    \brief Relocate the contents of an ELF binary prior to execution
+    \param elf ELF file to relocate
+    \param text_base Base relocation address of text section
+    \param data_base Base relocation address of data section(s)
+    \return 0 on success
+*/
+int elf_file_relocate(ELF_File *elf, ELF32_Addr text_base, ELF32_Addr data_base)
 {
-    if ( f != NULL )
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
     {
-        elf_file_cleanup(f);
-        free(f);
+        ELF_Section *s = elf->sections[i];
+        
+        if ( s == NULL )
+            continue;
+        
+        
     }
+    
+    return 0;
 }
-

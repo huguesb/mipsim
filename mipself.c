@@ -11,6 +11,7 @@
 #include "mipself.h"
 
 #include "io.h"
+#include "config.h"
 
 int mips_load_elf(MIPS *m, ELF_File *f)
 {
@@ -18,7 +19,6 @@ int mips_load_elf(MIPS *m, ELF_File *f)
     
     if ( f->header->e_type == ET_EXEC )
     {
-        // load segments whenever possible
         for ( ELF32_Word i = 0; i < f->nsegment; ++i )
         {
             ELF_Segment *s = f->segments[i];
@@ -39,6 +39,13 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         if ( f->header )
             m->hw.set_pc(&m->hw, f->header->e_entry);
     } else if ( f->header->e_type == ET_REL ) {
+        MIPSIM_Config *cfg = mipsim_config();
+        if ( elf_file_relocate(f, cfg->reloc_text, cfg->reloc_data) )
+        {
+            mipsim_printf(IO_WARNING, "Relocation failed\n");
+            return 1;
+        }
+        
         for ( ELF32_Word i = 0; i < f->nsection; ++i )
         {
             ELF_Section *s = f->sections[i];

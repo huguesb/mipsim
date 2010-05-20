@@ -162,6 +162,7 @@ typedef struct {
     
     /* data (might be null or widely different from ELF file representation) */
     ELF32_Char *s_data;
+    ELF32_Word s_reloc;
 } ELF_Section;
 
 typedef struct {
@@ -179,6 +180,30 @@ typedef struct {
     ELF32_Char *p_data;
 } ELF_Segment;
 
+typedef struct {
+    ELF32_Word st_name;
+    ELF32_Addr st_value;
+    ELF32_Word st_size;
+    ELF32_Char st_info;
+    ELF32_Char st_other;
+    ELF32_Half st_shndx;
+} ELF_Sym;
+
+typedef struct {
+    ELF32_Addr r_offset;
+    ELF32_Word r_info;
+} ELF_Rel;
+
+typedef struct {
+    ELF32_Addr  r_offset;
+    ELF32_Word  r_info;
+    ELF32_Sword r_addend;
+} ELF_Rela;
+
+#define ELF32_R_SYM(i)    ((i)>>8)
+#define ELF32_R_TYPE(i)   ((unsigned char)(i))
+#define ELF32_R_INFO(s,t) (((s)<<8)+(unsigned char)(t))
+
 /*
     Simple ELF file manipulation
 */
@@ -195,8 +220,10 @@ typedef struct {
 } ELF_File;
 
 ELF_File* elf_file_create();
-void elf_file_destroy(ELF_File *f);
+void elf_file_destroy(ELF_File *elf);
 
-int elf_file_load(ELF_File *f, const char *filename);
+int elf_file_load(ELF_File *elf, const char *filename);
+
+int elf_file_relocate(ELF_File *elf, ELF32_Addr text_base, ELF32_Addr data_base);
 
 #endif
