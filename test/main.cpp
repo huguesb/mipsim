@@ -321,7 +321,7 @@ int main(int argc, char **argv)
     
     while ( regs[MIPSim].pc < regs[GDB].pc )
     {
-        command(MIPSim, "s\n");
+        command(MIPSim, "si\n");
         update_register_file(MIPSim);
     }
     
@@ -359,7 +359,7 @@ int main(int argc, char **argv)
                         ++n;
                         ++diff_seq;
                         
-                        command(MIPSim, "s\n");
+                        command(MIPSim, "si\n");
                         update_register_file(MIPSim);
                         
                         continue;
@@ -385,7 +385,7 @@ int main(int argc, char **argv)
             diff_seq = 0;
         }
         
-        command(MIPSim, "s\n");
+        command(MIPSim, "si\n");
         update_register_file(MIPSim);
         
         command(GDB, "si\n");
