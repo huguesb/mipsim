@@ -93,6 +93,82 @@ ELF32_Word elf_fget_word(FILE *f, ELF32_Char endian)
 }
 
 /*!
+    \internal
+    \brief Load a halfword from a chunk of data
+    \param d data
+    \param endian endianness
+    \return the halfword at the current position
+*/
+ELF32_Half elf_read_half(ELF32_Char *d, ELF32_Char endian)
+{
+    int c0 = d[0] & 0x00FF;
+    int c1 = d[1] & 0x00FF;
+    
+    return endian == ELFDATA2MSB ?
+            (c0 << 8) | c1 :
+            (c1 << 8) | c0;
+}
+
+/*!
+    \internal
+    \brief Load a word from a chunk of memory
+    \param d data
+    \param endian endianness
+    \return the word at the current position
+*/
+ELF32_Word elf_read_word(ELF32_Char *d, ELF32_Char endian)
+{
+    int c0 = d[0] & 0x00FF;
+    int c1 = d[1] & 0x00FF;
+    int c2 = d[2] & 0x00FF;
+    int c3 = d[3] & 0x00FF;
+    
+    return endian == ELFDATA2MSB ?
+            (c0 << 24) | (c1 << 16) | (c2 << 8) | c3 :
+            (c3 << 24) | (c2 << 16) | (c1 << 8) | c0;
+}
+
+/*!
+    \internal
+    \brief Write a halfword to a chunk of data
+    \param d data
+    \param endian endianness
+*/
+void elf_write_half(ELF32_Char *d, ELF32_Char endian, ELF32_Half h)
+{
+    if ( endian == ELFDATA2MSB )
+    {
+        d[0] = (h >> 8) & 0xFF;
+        d[1] = (h >> 0) & 0xFF;
+    } else {
+        d[1] = (h >> 8) & 0xFF;
+        d[0] = (h >> 0) & 0xFF;
+    }
+}
+
+/*!
+    \internal
+    \brief Write a word to a chunk of memory
+    \param d data
+    \param endian endianness
+*/
+void elf_write_word(ELF32_Char *d, ELF32_Char endian, ELF32_Word w)
+{
+    if ( endian == ELFDATA2MSB )
+    {
+        d[0] = (w >> 24) & 0xFF;
+        d[1] = (w >> 16) & 0xFF;
+        d[2] = (w >>  8) & 0xFF;
+        d[3] = (w >>  0) & 0xFF;
+    } else {
+        d[3] = (w >> 24) & 0xFF;
+        d[2] = (w >> 16) & 0xFF;
+        d[1] = (w >>  8) & 0xFF;
+        d[0] = (w >>  0) & 0xFF;
+    }
+}
+
+/*!
     \brief Create a structure suitable for ELF file loading
     \return NULL on failure, allocated structure otherwise
     
@@ -179,6 +255,30 @@ void elf_file_destroy(ELF_File *elf)
 }
 
 /*!
+    \brief Find a string
+    \param elf ELF file to inspect
+    \param strtab Index of string table in section table
+    \param stridx Index of string in string table
+    \return pointer to string, NULL on failure
+    
+    The pointer MUST NOT be free'd.
+*/
+const char* elf_string(ELF_File *elf, ELF32_Word strtab, ELF32_Word stridx)
+{
+    if ( elf == NULL
+        || strtab >= elf->nsection
+        )
+        return NULL;
+    
+    ELF_Section *s = elf->sections[strtab];
+    
+    if ( s == NULL || s->s_data == NULL || s->s_type != SHT_STRTAB || stridx >= s->s_size )
+        return NULL;
+    
+    return (char*)s->s_data + stridx;
+}
+
+/*!
     \brief Find the name of a section
     \return pointer to section name, NULL on failure
     
@@ -195,10 +295,11 @@ const char* elf_section_name(ELF_File *elf, ELF32_Word n, ELF32_Word *size)
     
     ELF_Section *s = elf->sections[n];
     
-    if ( s && size )
-        *size = s->s_size;
-    else
+    if ( s == NULL )
         return NULL;
+    
+    if ( size )
+        *size = s->s_size;
     
     return (char*)(elf->shstrtab->s_data) + s->s_name;
 }
@@ -558,10 +659,10 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
         
         while ( off + s->s_entsize < end )
         {
-            if ( off & mask )
+            if ( (off & mask) || fseek(handle, off, SEEK_SET) )
             {
                 mipsim_printf(IO_WARNING,
-                              "ELF:%s: Improper alignement of symbol table entreis\n",
+                              "ELF:%s: Improper alignement of symbol table entries\n",
                               filename
                               );
                 free(s->s_data);
@@ -591,10 +692,10 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
         
         while ( off + s->s_entsize < end )
         {
-            if ( off & mask )
+            if ( (off & mask) || fseek(handle, off, SEEK_SET) )
             {
                 mipsim_printf(IO_WARNING,
-                              "ELF:%s: Improper alignement of symbol table entreis\n",
+                              "ELF:%s: Improper alignement of relocation table entries\n",
                               filename
                               );
                 free(s->s_data);
@@ -620,10 +721,10 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
         
         while ( off + s->s_entsize < end )
         {
-            if ( off & mask )
+            if ( (off & mask) || fseek(handle, off, SEEK_SET) )
             {
                 mipsim_printf(IO_WARNING,
-                              "ELF:%s: Improper alignement of symbol table entreis\n",
+                              "ELF:%s: Improper alignement of relocation table entries\n",
                               filename
                               );
                 free(s->s_data);
@@ -821,6 +922,20 @@ int elf_file_load(ELF_File *elf, const char *filename)
     return exit_code;
 }
 
+ELF32_Addr elf_symbol_address(ELF_File *elf, ELF_Sym *sym)
+{
+    if ( elf == NULL || sym == NULL )
+        return 0;
+    
+    if ( sym->s_shndx == SHN_ABS )
+        return sym->s_value;
+    
+    ELF_Section *s = sym->s_shndx < elf->nsection ? elf->sections[sym->s_shndx] : NULL;
+    ELF32_Word base = s != NULL ? (s->s_addr ? s->s_addr : s->s_reloc) : 0;
+    
+    return base + sym->s_value;
+}
+
 /*!
     \brief Relocate the contents of an ELF binary prior to execution
     \param elf ELF file to relocate
@@ -830,6 +945,8 @@ int elf_file_load(ELF_File *elf, const char *filename)
 */
 int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
 {
+    const ELF32_Char endian = elf->header->e_ident[EI_DATA];
+    
     /*
         ensure that all SHF_ALLOC sections are placed
     */
@@ -862,8 +979,6 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
             || (s->s_type != SHT_REL && s->s_type != SHT_RELA) )
             continue;
         
-        mipsim_printf(IO_DEBUG, "Reloc\n");
-        
         const ELF32_Word n = s->s_size / s->s_entsize;
         
         ELF_Section *symtab = s->s_link < elf->nsection ? elf->sections[s->s_link] : NULL;
@@ -874,6 +989,11 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
             mipsim_printf(IO_WARNING, "ELF:Invalid relocation section\n");
             return 1;
         }
+        
+        if ( !(target->s_flags & SHF_ALLOC) )
+            continue;
+        
+        mipsim_printf(IO_DEBUG, "Relocating %d entries in %s\n", n, elf_section_name(elf, s->s_info, NULL));
         
         ELF32_Char *sd = target->s_data;
         
@@ -891,21 +1011,47 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                 
                 if ( sidx >= symcount )
                 {
-                    mipsim_printf(IO_WARNING, "ELF:Invalid relocation section\n");
+                    mipsim_printf(IO_WARNING, "ELF: Invalid relocation section\n");
                     return 1;
                 }
                 
-                if ( type == R_386_NONE )
+                if ( symbols[sidx].s_shndx == SHN_UNDEF )
+                {
+                    mipsim_printf(IO_WARNING, "ELF: Reference to undefined symbol\n");
+                    return 1;
+                }
+                
+                ELF32_Char *rd = sd + r->r_offset;
+                ELF32_Word A = elf_read_word(rd, endian);
+                ELF32_Word S = elf_symbol_address(elf, symbols + sidx);
+                
+                mipsim_printf(IO_DEBUG, "%08x:%08x:", r->r_offset, r->r_info);
+                mipsim_printf(IO_DEBUG, "%d:%d:%20s:", sidx, symbols[sidx].s_name,
+                              elf_string(elf, symtab->s_link, symbols[sidx].s_name));
+                mipsim_printf(IO_DEBUG, "@ 0x%08x : 0x%08x -> ",
+                              r->r_offset, A);
+                
+                if ( type == R_MIPS_NONE )
                 {
                     
-                } else if ( type == R_386_32 ) {
+                } else if ( type == R_MIPS_32 ) {
+                    elf_write_word(rd, endian,
+                                   S + A
+                                   );
+                } else if ( type == R_MIPS_26 ) {
+                    elf_write_word(rd, endian,
+                                   (A & 0xFC000000) | ((((A << 2) + S) >> 2) & 0x03FFFFFF)
+                                   );
+                } else if ( type == R_MIPS_HI16 ) {
                     
-                } else if ( type == R_386_PC32 ) {
+                } else if ( type == R_MIPS_LO16 ) {
                     
                 } else {
                     mipsim_printf(IO_WARNING, "ELF: Unsupported relocation type %d\n", type);
                     return 1;
                 }
+                
+                mipsim_printf(IO_DEBUG, "0x%08x\n", elf_read_word(rd, endian));
             }
         } else if ( s->s_type == SHT_RELA ) {
             ELF_Rela *r = (ELF_Rela*)((void*)s->s_data);
@@ -921,13 +1067,8 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                     return 1;
                 }
                 
-                if ( type == R_386_NONE )
+                if ( type == R_MIPS_NONE )
                 {
-                    
-                } else if ( type == R_386_32 ) {
-                    
-                } else if ( type == R_386_PC32 ) {
-                    
                 } else {
                     mipsim_printf(IO_WARNING, "ELF: Unsupported relocation type %d\n", type);
                     return 1;

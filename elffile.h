@@ -96,9 +96,9 @@ enum {
 
 enum {
     SHN_UNDEF     = 0,
-    SHF_LORESERVE = 0xff00,
-    SHF_LOPROC    = 0xff00,
-    SHF_HIPROC    = 0xff1f,
+    SHN_LORESERVE = 0xff00,
+    SHN_LOPROC    = 0xff00,
+    SHN_HIPROC    = 0xff1f,
     SHN_ABS       = 0xfff1,
     SHN_COMMON    = 0xfff2,
     SHN_HIRESERVE = 0xffff
@@ -180,6 +180,24 @@ typedef struct {
     ELF32_Char *p_data;
 } ELF_Segment;
 
+enum {
+    STB_LOCAL   = 0,
+    STB_GLOBAL  = 1,
+    STB_WEAK    = 2,
+    STB_LOPROC  = 13,
+    STB_HIPROC  = 15
+};
+
+enum {
+    STT_NOTYPE  = 0,
+    STT_OBJECT  = 1,
+    STT_FUNC    = 2,
+    STT_SECTION = 3,
+    STT_FILE    = 4,
+    STT_LOPROC  = 13,
+    STT_HIPROC  = 15
+};
+
 typedef struct {
     ELF32_Word s_name;
     ELF32_Addr s_value;
@@ -194,17 +212,24 @@ typedef struct {
 #define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
 
 enum {
-    R_386_NONE      = 0,
-    R_386_32        = 1,
-    R_386_PC32      = 2,
-    R_386_GOT32     = 3,
-    R_386_PLT32     = 4,
-    R_386_COPY      = 5,
-    R_386_GLOB_DAT  = 6,
-    R_386_JMP_SLOT  = 7,
-    R_386_RELATIVE  = 8,
-    R_386_GOTOFF    = 9,
-    R_386_GOTPC     = 10
+    R_MIPS_NONE     = 0,
+    R_MIPS_16       = 1,
+    R_MIPS_32       = 2,
+    R_MIPS_REL32    = 3,
+    R_MIPS_26       = 4,
+    R_MIPS_HI16     = 5,
+    R_MIPS_LO16     = 6,
+    
+    R_MIPS_GPREL16  = 7,
+    R_MIPS_LITERAL  = 8,
+    R_MIPS_GOT16    = 9,
+    R_MIPS_PC16     = 10,
+    R_MIPS_CALL16   = 11,
+    R_MIPS_GPREL32  = 12,
+    R_MIPS_GOTHI16  = 21,
+    R_MIPS_GOTLO16  = 22,
+    R_MIPS_CALLHI16 = 30,
+    R_MIPS_CALLLO16 = 31,
 };
 
 typedef struct {
@@ -240,6 +265,7 @@ typedef struct {
 ELF_File* elf_file_create();
 void elf_file_destroy(ELF_File *elf);
 
+const char* elf_string(ELF_File *elf, ELF32_Word strtab, ELF32_Word stridx);
 const char* elf_section_name(ELF_File *elf, ELF32_Word n, ELF32_Word *size);
 
 int elf_file_load(ELF_File *elf, const char *filename);
