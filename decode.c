@@ -5,7 +5,7 @@
 **  All rights reserved.
 **  
 **  This file may be used under the terms of the BSD license.
-**  Refer to the accompanying COPYING file.
+**  Refer to the accompanying COPYING file for legalese.
 ****************************************************************************/
 
 #include "decode.h"

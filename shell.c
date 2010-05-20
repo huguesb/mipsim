@@ -5,7 +5,7 @@
 **  All rights reserved.
 **  
 **  This file may be used under the terms of the BSD license.
-**  Refer to the accompanying COPYING file.
+**  Refer to the accompanying COPYING file for legalese.
 ****************************************************************************/
 
 #include "shell.h"
@@ -94,6 +94,20 @@ int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
         Map ELF file content to emulated machine memory
     */
     mips_load_elf(*m, *f);
+    
+    return COMMAND_OK;
+}
+
+int shell_reset(int argc, char **argv, MIPS *m)
+{
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    (void)argc; (void)argv;
+    
+    m->hw.reset(&m->hw);
+    for ( int i = 0; i < 4; ++i )
+        m->cp[i].reset(&m->cp[i]);
     
     return COMMAND_OK;
 }
@@ -327,6 +341,7 @@ static const Command commands[] = {
     {"q",  shell_quit, ""},
     
     // full names
+    {"reset", shell_reset, ""},
     {"dasm",  shell_dasm, ""},
     {"dreg",  shell_dreg, ""},
     {"sreg",  shell_sreg, ""},
@@ -402,14 +417,16 @@ int execute_command(int argc, char **argv, MIPS *m)
     return COMMAND_INVALID;
 }
 
-/*
-    input : a space-separated command line
-    output : a list of pointers to start of each "token" of the command line
+/*!
+    \brief Split a command into a list of arguments
     
-    notes :
-        * all whitespaces are turned into string terminators in the input
-        * output is malloc'd and must be free'd by caller
-        * quoted whitespaces are preserved
+    \param[in]  cmd  command line to process
+    \param[out] argc number of elements in the resulting list
+    \return          list of pointer to arguments
+    
+    \note the caller is reponsible for freeing the list
+    \note each element of the list points inside the input string and MUST NOT be freed
+    \note every whitespace in the input string is truned into a null terminator
 */
 char** tokenize(char *cmd, int *argc)
 {
@@ -468,6 +485,9 @@ char** tokenize(char *cmd, int *argc)
     return argv;
 }
 
+/*!
+    
+*/
 int mipsim_shell(int cli_argc, char **cli_argv)
 {
     int argc, ret = COMMAND_OK;

@@ -5,7 +5,7 @@
 **  All rights reserved.
 **  
 **  This file may be used under the terms of the BSD license.
-**  Refer to the accompanying COPYING file.
+**  Refer to the accompanying COPYING file for legalese.
 ****************************************************************************/
 
 #include "version.h"
@@ -28,10 +28,13 @@ void version()
 int main(int argc, char **argv)
 {
     /*
-        Set default config option
+        Set default config option from CLI args
     */
     if ( mipsim_config_init(argc, argv) )
     {
+        /*
+            Display info and exit if requested on CLI
+        */
         version();
         return 0;
     }
