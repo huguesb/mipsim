@@ -275,6 +275,8 @@ const char* elf_string(ELF_File *elf, ELF32_Word strtab, ELF32_Word stridx)
     if ( s == NULL || s->s_data == NULL || s->s_type != SHT_STRTAB || stridx >= s->s_size )
         return NULL;
     
+    //mipsim_printf(IO_WARNING, "[%i, %i]\n", strtab, stridx);
+    
     return (char*)s->s_data + stridx;
 }
 
@@ -648,16 +650,30 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
     if ( s->s_type == SHT_STRTAB )
     {
         ret = elf_fread(&s->s_data, handle, s->s_offset, s->s_size, filename);
+        
+        /*
+        mipsim_printf(IO_DEBUG, "strtab : \n");
+        for ( int i = 0; i < s->s_size; ++i )
+            mipsim_printf(IO_DEBUG, "%c", s->s_data[i] == 0 ? '\n' : s->s_data[i]);
+        */
+        
     } else if ( s->s_type == SHT_SYMTAB ) {
         // s_link points to strtab
         
         ELF32_Off off = s->s_offset;
         ELF32_Off end = s->s_offset + s->s_size;
         
+        if ( !s->s_entsize )
+        {
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid entry size in symbol table\n",
+                          filename);
+            return 1;
+        }
+        
         ELF_Sym *sym = (ELF_Sym*)malloc((s->s_size / s->s_entsize) * sizeof(ELF_Sym));
         s->s_data = (ELF32_Char*)((void*)sym);
         
-        while ( off + s->s_entsize < end )
+        while ( off + s->s_entsize <= end )
         {
             if ( (off & mask) || fseek(handle, off, SEEK_SET) )
             {
@@ -687,10 +703,17 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
         ELF32_Off off = s->s_offset;
         ELF32_Off end = s->s_offset + s->s_size;
         
+        if ( !s->s_entsize )
+        {
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid entry size in relocation table\n",
+                          filename);
+            return 1;
+        }
+        
         ELF_Rel *rel = (ELF_Rel*)malloc((s->s_size / s->s_entsize) * sizeof(ELF_Rel));
         s->s_data = (ELF32_Char*)((void*)rel);
         
-        while ( off + s->s_entsize < end )
+        while ( off + s->s_entsize <= end )
         {
             if ( (off & mask) || fseek(handle, off, SEEK_SET) )
             {
@@ -716,10 +739,17 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
         ELF32_Off off = s->s_offset;
         ELF32_Off end = s->s_offset + s->s_size;
         
+        if ( !s->s_entsize )
+        {
+            mipsim_printf(IO_WARNING, "ELF:%s: Invalid entry size in relocation table\n",
+                          filename);
+            return 1;
+        }
+        
         ELF_Rela *rela = (ELF_Rela*)malloc((s->s_size / s->s_entsize) * sizeof(ELF_Rela));
         s->s_data = (ELF32_Char*)((void*)rela);
         
-        while ( off + s->s_entsize < end )
+        while ( off + s->s_entsize <= end )
         {
             if ( (off & mask) || fseek(handle, off, SEEK_SET) )
             {
@@ -1004,6 +1034,10 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
         {
             ELF_Rel *r = (ELF_Rel*)((void*)s->s_data);
             
+            ELF32_Char *prevrd;
+            ELF32_Word prevA, prevS;
+                
+            
             for ( ELF32_Word i = 0; i < n; ++i, ++r )
             {
                 ELF32_Word sidx = ELF32_R_SYM(r->r_info);
@@ -1015,9 +1049,22 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                     return 1;
                 }
                 
+                mipsim_printf(IO_DEBUG, "%08x:%08x:", r->r_offset, r->r_info);
+                //mipsim_printf(IO_DEBUG, "%20s:\n",
+                //              elf_string(elf, symtab->s_link, symbols[sidx].s_name));
+                
+                
+                mipsim_printf(IO_DEBUG, "%08x:", symbols[sidx].s_name);
+                mipsim_printf(IO_DEBUG, "%08x:", symbols[sidx].s_value);
+                mipsim_printf(IO_DEBUG, "%08x:", symbols[sidx].s_size);
+                mipsim_printf(IO_DEBUG, "%02x:", symbols[sidx].s_info);
+                mipsim_printf(IO_DEBUG, "%02x:", symbols[sidx].s_other);
+                mipsim_printf(IO_DEBUG, "%04x\n", symbols[sidx].s_shndx);
+                
                 if ( symbols[sidx].s_shndx == SHN_UNDEF )
                 {
-                    mipsim_printf(IO_WARNING, "ELF: Reference to undefined symbol\n");
+                    mipsim_printf(IO_WARNING, "ELF: Reference to undefined symbol [%s]\n",
+                                  elf_string(elf, symtab->s_link, symbols[sidx].s_name));
                     return 1;
                 }
                 
@@ -1025,11 +1072,13 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                 ELF32_Word A = elf_read_word(rd, endian);
                 ELF32_Word S = elf_symbol_address(elf, symbols + sidx);
                 
+                /*
                 mipsim_printf(IO_DEBUG, "%08x:%08x:", r->r_offset, r->r_info);
-                mipsim_printf(IO_DEBUG, "%d:%d:%20s:", sidx, symbols[sidx].s_name,
+                mipsim_printf(IO_DEBUG, "%20s:",
                               elf_string(elf, symtab->s_link, symbols[sidx].s_name));
-                mipsim_printf(IO_DEBUG, "@ 0x%08x : 0x%08x -> ",
+                mipsim_printf(IO_DEBUG, "@ 0x%08x : 0x%08x\n",
                               r->r_offset, A);
+                */
                 
                 if ( type == R_MIPS_NONE )
                 {
@@ -1043,15 +1092,42 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                                    (A & 0xFC000000) | ((((A << 2) + S) >> 2) & 0x03FFFFFF)
                                    );
                 } else if ( type == R_MIPS_HI16 ) {
-                    
+                    prevrd = rd;
+                    prevA = A;
+                    prevS = S;
                 } else if ( type == R_MIPS_LO16 ) {
+                    if ( prevrd == NULL )
+                    {
+                        mipsim_printf(IO_WARNING, "ELF: Missing MIPS_HI16 relocation entry\n");
+                        return 1;
+                    }
                     
+                    ELF32_Word AHL = (prevA << 16) | (A & 0x0000FFFF); 
+                    
+                    if ( S != prevS )
+                    {
+                        mipsim_printf(IO_WARNING, "ELF: Broken MIPS_HI16 / MIPS_LO16 relocation entries\n");
+                        return 1;
+                    }
+                    
+                    elf_write_word(prevrd, endian, (prevA & 0xFFFF0000) | (((AHL + S) >> 16) & 0x0000FFFF));
+                    elf_write_word(rd,     endian, (A     & 0xFFFF0000) | ( (AHL + S)        & 0x0000FFFF));
+                    
+                    //mipsim_printf(IO_DEBUG, "-> 0x%08x\n", elf_read_word(prevrd, endian));
+                    
+                    prevrd = NULL;
                 } else {
                     mipsim_printf(IO_WARNING, "ELF: Unsupported relocation type %d\n", type);
                     return 1;
                 }
                 
-                mipsim_printf(IO_DEBUG, "0x%08x\n", elf_read_word(rd, endian));
+                //mipsim_printf(IO_DEBUG, "-> 0x%08x\n", elf_read_word(rd, endian));
+                
+                if ( prevrd != NULL && type != R_MIPS_HI16 )
+                {
+                    mipsim_printf(IO_WARNING, "ELF: Missing MIPS_LO16 relocation entry\n");
+                    return 1;
+                }
             }
         } else if ( s->s_type == SHT_RELA ) {
             ELF_Rela *r = (ELF_Rela*)((void*)s->s_data);
