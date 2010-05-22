@@ -11,13 +11,8 @@
 #include "decode.h"
 
 #include "io.h"
+#include "util.h"
 #include "monitor.h"
-
-static inline uint32_t s32_to_u32(int32_t v)
-{ return *((uint32_t*)&v); }
-
-static inline int32_t u32_to_s32(uint32_t v)
-{ return *((int32_t*)&v); }
 
 int decode_unknown(MIPS *m, uint32_t ir);
 

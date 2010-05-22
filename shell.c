@@ -16,6 +16,7 @@
 #include <readline/history.h>
 
 #include "io.h"
+#include "util.h"
 #include "config.h"
 #include "mipself.h"
 
@@ -23,6 +24,13 @@ typedef struct _Shell_Env {
     MIPS *m;
     ELF_File *f;
 } Shell_Env;
+
+uint32_t symbol_value(const char *n, void *d, int *error)
+{
+    Shell_Env *e = (Shell_Env*)d;
+    
+    return 0;
+}
 
 typedef int (*command_handler)(int argc, char **argv, Shell_Env *e);
 
@@ -174,7 +182,15 @@ int shell_run(int argc, char **argv, Shell_Env *e)
     
     if ( argc == 2 )
     {
-        MIPS_Addr addr = strtoul(argv[1], NULL, 0);
+        int error;
+        MIPS_Addr addr = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
         printf("running from 0x%08x\n", addr);
         m->hw.set_pc(&m->hw, addr);
     } else if ( argc != 1 ) {
@@ -199,16 +215,21 @@ int shell_step(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
-    int n = 0;
+    int n = 1;
     
     if ( argc == 2 )
     {
-        n = strtoul(argv[1], NULL, 0);
+        int error;
+        n = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
     } else if ( argc != 1 ) {
         printf("step [count]\n");
         return COMMAND_PARAM_COUNT;
-    } else {
-        n = 1;
     }
     
     return mips_exec(m, n, 1) ? COMMAND_FAIL : COMMAND_OK;
@@ -220,16 +241,21 @@ int shell_stepi(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
-    int n = 0;
+    int n = 1;
     
     if ( argc == 2 )
     {
-        n = strtoul(argv[1], NULL, 0);
+        int error;
+        n = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
     } else if ( argc != 1 ) {
         printf("stepi [count]\n");
         return COMMAND_PARAM_COUNT;
-    } else {
-        n = 1;
     }
     
     return mips_exec(m, n, 0) ? COMMAND_FAIL : COMMAND_OK;
@@ -308,13 +334,21 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
     
     if ( argc >= 2 && argc <= 3 )
     {
-        MIPS_Addr start = strtoul(argv[1], NULL, 0);
+        int error;
+        
+        MIPS_Addr start = eval_expr(argv[1], symbol_value, e, &error);
         MIPS_Addr end   = start + (3 << 4);
         
-        if ( argc == 3 )
-            end = strtoul(argv[2], NULL, 0);
+        if ( error )
+        {
+            printf("Invalid parameters\n");
+            return COMMAND_PARAM_TYPE;
+        }
         
-        if ( end < start )
+        if ( argc == 3 )
+            end = eval_expr(argv[2], symbol_value, e, &error);
+        
+        if ( error || end < start )
         {
             printf("Invalid parameters\n");
             return COMMAND_PARAM_TYPE;
@@ -355,14 +389,29 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
     
     if ( argc >= 3 && argc <= 4 )
     {
-        MIPS_Addr addr = strtoul(argv[1], NULL, 0);
-        uint32_t value = strtoul(argv[2], NULL, 0);
+        int error;
+        MIPS_Addr addr = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid parameters\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        uint32_t value = eval_expr(argv[2], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid parameters\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
         int n = 1;
         
         if ( argc == 4 )
-            n = strtoul(argv[3], NULL, 0);
+            n = eval_expr(argv[3], symbol_value, e, &error);
         
-        if ( addr == 0 || n == 0 || aa )
+        if ( addr == 0 || n == 0 || error || !bit_fit(value, n << 3) )
         {
             printf("Invalid parameters\n");
             return COMMAND_PARAM_TYPE;
