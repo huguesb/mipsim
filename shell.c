@@ -47,7 +47,7 @@ int shell_load(int argc, char **argv, Shell_Env *e)
 {
     if ( argc <= 1 )
     {
-        printf("load expects one string parameter\n");
+        printf("load [filepath]\n");
         return 1;
     }
     
@@ -178,7 +178,7 @@ int shell_run(int argc, char **argv, Shell_Env *e)
         printf("running from 0x%08x\n", addr);
         m->hw.set_pc(&m->hw, addr);
     } else if ( argc != 1 ) {
-        printf("run expects at most one parameter\n");
+        printf("run [address]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -205,7 +205,7 @@ int shell_step(int argc, char **argv, Shell_Env *e)
     {
         n = strtoul(argv[1], NULL, 0);
     } else if ( argc != 1 ) {
-        printf("step expects at most one integer parameter\n");
+        printf("step [count]\n");
         return COMMAND_PARAM_COUNT;
     } else {
         n = 1;
@@ -226,7 +226,7 @@ int shell_stepi(int argc, char **argv, Shell_Env *e)
     {
         n = strtoul(argv[1], NULL, 0);
     } else if ( argc != 1 ) {
-        printf("step expects at most one integer parameter\n");
+        printf("stepi [count]\n");
         return COMMAND_PARAM_COUNT;
     } else {
         n = 1;
@@ -239,7 +239,7 @@ int shell_trace(int argc, char **argv, Shell_Env *e)
 {
     (void)e;
     
-    int n = 0;
+    int n = mipsim_config()->io_mask & IO_TRACE ? 0 : 1;
     
     if ( argc == 2 )
     {
@@ -252,8 +252,8 @@ int shell_trace(int argc, char **argv, Shell_Env *e)
             printf("trace expects a boolean parameter\n");
             return COMMAND_PARAM_TYPE;
         }
-    } else {
-        printf("trace expects exactly one boolean parameter");
+    } else if ( argc != 1 ) {
+        printf("trace [1 | 0]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -306,6 +306,42 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
+    if ( argc >= 2 && argc <= 3 )
+    {
+        MIPS_Addr start = strtoul(argv[1], NULL, 0);
+        MIPS_Addr end   = start + (3 << 4);
+        
+        if ( argc == 3 )
+            end = strtoul(argv[2], NULL, 0);
+        
+        if ( end < start )
+        {
+            printf("Invalid parameters\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        int stat;
+        MIPS_Addr a = start;
+        for ( MIPS_Addr i = 0; i < ((end - start) >> 4); ++i )
+        {
+            printf("%08x : ", a);
+            for ( int j = 0; j < 16; ++j )
+                printf(" %02x", mips_read_b(m, a++, &stat));
+            printf("\n");
+        }
+        
+        if ( ((end - start) & 15) || !((end - start) & ~15) )
+        {
+            printf("%08x : ", a);
+            for ( MIPS_Addr i = 0; i <= ((end - start) & 15); ++i )
+                printf(" %02x", mips_read_b(m, a++, &stat));
+            printf("\n");
+        }
+    } else {
+        printf("dmem <address> [address]\n");
+        return COMMAND_PARAM_COUNT;
+    }
+    
     return COMMAND_OK;
 }
 
@@ -316,6 +352,38 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
+    
+    if ( argc >= 3 && argc <= 4 )
+    {
+        MIPS_Addr addr = strtoul(argv[1], NULL, 0);
+        uint32_t value = strtoul(argv[2], NULL, 0);
+        int n = 1;
+        
+        if ( argc == 4 )
+            n = strtoul(argv[3], NULL, 0);
+        
+        if ( addr == 0 || n == 0 || aa )
+        {
+            printf("Invalid parameters\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        int stat;
+        
+        if ( n == 1 )
+            m->mem.write_b(&m->mem, addr, value, &stat);
+        else if ( n == 2 )
+            m->mem.write_h(&m->mem, addr, value, &stat);
+        else if ( n == 4 )
+            m->mem.write_w(&m->mem, addr, value, &stat);
+        else {
+            printf("Invalid bytecount %d not in {1, 2, 4}\n", n);
+            return COMMAND_INVALID;
+        }
+    } else {
+        printf("smem <address> <value> [bytecount]\n");
+        return COMMAND_PARAM_COUNT;
+    }
     
     return COMMAND_OK;
 }
