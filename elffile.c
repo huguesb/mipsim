@@ -973,29 +973,9 @@ ELF32_Addr elf_symbol_address(ELF_File *elf, ELF_Sym *sym)
     \param data_base Base relocation address of data section(s)
     \return 0 on success
 */
-int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
+int elf_file_relocate(ELF_File *elf)
 {
     const ELF32_Char endian = elf->header->e_ident[EI_DATA];
-    
-    /*
-        ensure that all SHF_ALLOC sections are placed
-    */
-    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
-    {
-        ELF_Section *s = elf->sections[i];
-        
-        if ( s == NULL || s->s_data == NULL )
-            continue;
-        
-        if ( (s->s_flags & SHF_ALLOC) && !s->s_addr )
-        {
-            ELF32_Word size;
-            const char *name = elf_section_name(elf, i, &size);
-            s->s_addr = section_addr(name, size);
-            
-            mipsim_printf(IO_DEBUG, "Placed %s @ 0x%08x\n", name, s->s_addr);
-        }
-    }
     
     /*
         relocate sections
@@ -1049,10 +1029,8 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                     return 1;
                 }
                 
+                /*
                 mipsim_printf(IO_DEBUG, "%08x:%08x:", r->r_offset, r->r_info);
-                //mipsim_printf(IO_DEBUG, "%20s:\n",
-                //              elf_string(elf, symtab->s_link, symbols[sidx].s_name));
-                
                 
                 mipsim_printf(IO_DEBUG, "%08x:", symbols[sidx].s_name);
                 mipsim_printf(IO_DEBUG, "%08x:", symbols[sidx].s_value);
@@ -1060,6 +1038,7 @@ int elf_file_relocate(ELF_File *elf, addr_for_name section_addr)
                 mipsim_printf(IO_DEBUG, "%02x:", symbols[sidx].s_info);
                 mipsim_printf(IO_DEBUG, "%02x:", symbols[sidx].s_other);
                 mipsim_printf(IO_DEBUG, "%04x\n", symbols[sidx].s_shndx);
+                */
                 
                 if ( symbols[sidx].s_shndx == SHN_UNDEF )
                 {

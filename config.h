@@ -23,7 +23,7 @@ typedef struct _MIPSIM_Config {
     
     uint32_t reloc_text, reloc_data;
     
-    uint32_t address_max;
+    uint32_t phys_memory_size;
 } MIPSIM_Config;
 
 MIPSIM_Config* mipsim_config();

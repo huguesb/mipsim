@@ -270,7 +270,6 @@ const char* elf_section_name(ELF_File *elf, ELF32_Word n, ELF32_Word *size);
 
 int elf_file_load(ELF_File *elf, const char *filename);
 
-typedef ELF32_Addr (*addr_for_name)(const char *name, ELF32_Word size);
-int elf_file_relocate(ELF_File *elf, addr_for_name section_addr);
+int elf_file_relocate(ELF_File *elf);
 
 #endif

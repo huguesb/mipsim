@@ -33,7 +33,7 @@ int mipsim_config_init(int argc, char **argv)
     
     cfg->reloc_text  = 0x00400000;
     cfg->reloc_data  = 0xFFFFFFFF;
-    cfg->address_max = 0x00100000;
+    cfg->phys_memory_size = 0x00100000;
     
     for ( int i = 1; i < argc; ++i )
     {
@@ -77,10 +77,10 @@ int mipsim_config_init(int argc, char **argv)
             *argv[i] = 0;
             if ( i+1 < argc )
             {
-                cfg->address_max = strtoul(argv[++i], &arg, 0);
+                cfg->phys_memory_size = strtoul(argv[++i], &arg, 0);
                 *argv[i] = 0;
                 
-                if ( !cfg->address_max )
+                if ( !cfg->phys_memory_size )
                 {
                     mipsim_printf(IO_WARNING, "CLI: invalid value for -s switch\n");
                 }
