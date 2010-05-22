@@ -19,7 +19,12 @@
 #include "config.h"
 #include "mipself.h"
 
-typedef int (*command_handler)(int argc, char **argv, MIPS *m);
+typedef struct _Shell_Env {
+    MIPS *m;
+    ELF_File *f;
+} Shell_Env;
+
+typedef int (*command_handler)(int argc, char **argv, Shell_Env *e);
 
 enum {
     COMMAND_OK,
@@ -38,7 +43,7 @@ typedef struct _Command {
     const char *help;
 } Command;
 
-int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
+int shell_load(int argc, char **argv, Shell_Env *e)
 {
     if ( argc <= 1 )
     {
@@ -46,21 +51,21 @@ int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
         return 1;
     }
     
-    if ( *m != NULL )
+    if ( e->m != NULL )
     {
         /*
             Create simulator structures
             TODO : specify arch via a command line switch and alter if needed...
         */
-        mips_reset(*m);
+        mips_reset(e->m);
     } else {
         /*
             Create simulator structures
             TODO : specify arch via a command line switch...
         */
-        *m = mips_create(mipsim_config()->arch);
+        e->m = mips_create(mipsim_config()->arch);
         
-        if ( *m == NULL )
+        if ( e->m == NULL )
         {
             printf("MIPSim: Failed to allocate memory for MIPS machine\n");
             return COMMAND_FAIL;
@@ -70,15 +75,15 @@ int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
     /*
         discard any previously loaded program
     */
-    if ( *f != NULL )
+    if ( e->f != NULL )
     {
-        elf_file_destroy(*f);
-        *f = NULL;
+        elf_file_destroy(e->f);
+        e->f = NULL;
     }
     
-    *f = elf_file_create();
+    e->f = elf_file_create();
     
-    if ( *f == NULL )
+    if ( e->f == NULL )
     {
         printf("MIPSim: Failed to allocate memory for ELF file\n");
         return COMMAND_FAIL;
@@ -87,19 +92,20 @@ int shell_load(int argc, char **argv, MIPS **m, ELF_File **f)
     /*
         Load ELF file
     */
-    if ( elf_file_load(*f, argv[1]) )
+    if ( elf_file_load(e->f, argv[1]) )
         return COMMAND_FAIL;
     
     /*
         Map ELF file content to emulated machine memory
     */
-    mips_load_elf(*m, *f);
+    mips_load_elf(e->m, e->f);
     
     return COMMAND_OK;
 }
 
-int shell_reset(int argc, char **argv, MIPS *m)
+int shell_reset(int argc, char **argv, Shell_Env *e)
 {
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
@@ -112,9 +118,9 @@ int shell_reset(int argc, char **argv, MIPS *m)
     return COMMAND_OK;
 }
 
-int shell_quit(int argc, char **argv, MIPS *m)
+int shell_quit(int argc, char **argv, Shell_Env *e)
 {
-    (void)argc; (void)argv; (void)m;
+    (void)argc; (void)argv; (void)e;
     
     return COMMAND_EXIT;
 }
@@ -160,8 +166,9 @@ void print_status(MIPS *m)
     }
 }
 
-int shell_run(int argc, char **argv, MIPS *m)
+int shell_run(int argc, char **argv, Shell_Env *e)
 {
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
@@ -186,8 +193,9 @@ int shell_run(int argc, char **argv, MIPS *m)
     return ret ? COMMAND_FAIL : COMMAND_OK;
 }
 
-int shell_step(int argc, char **argv, MIPS *m)
+int shell_step(int argc, char **argv, Shell_Env *e)
 {
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
@@ -206,8 +214,9 @@ int shell_step(int argc, char **argv, MIPS *m)
     return mips_exec(m, n, 1) ? COMMAND_FAIL : COMMAND_OK;
 }
 
-int shell_stepi(int argc, char **argv, MIPS *m)
+int shell_stepi(int argc, char **argv, Shell_Env *e)
 {
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
@@ -226,9 +235,9 @@ int shell_stepi(int argc, char **argv, MIPS *m)
     return mips_exec(m, n, 0) ? COMMAND_FAIL : COMMAND_OK;
 }
 
-int shell_trace(int argc, char **argv, MIPS *m)
+int shell_trace(int argc, char **argv, Shell_Env *e)
 {
-    (void)m;
+    (void)e;
     
     int n = 0;
     
@@ -256,60 +265,66 @@ int shell_trace(int argc, char **argv, MIPS *m)
     return COMMAND_OK;
 }
 
-int shell_dasm(int argc, char **argv, MIPS *m)
+int shell_dasm(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
     
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
     return COMMAND_OK;
 }
 
-int shell_dreg(int argc, char **argv, MIPS *m)
+int shell_dreg(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
     
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
     return COMMAND_OK;
 }
 
-int shell_sreg(int argc, char **argv, MIPS *m)
+int shell_sreg(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
     
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
     return COMMAND_OK;
 }
 
-int shell_dmem(int argc, char **argv, MIPS *m)
+int shell_dmem(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
     
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
     return COMMAND_OK;
 }
 
-int shell_smem(int argc, char **argv, MIPS *m)
+int shell_smem(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
     
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
     return COMMAND_OK;
 }
 
-int shell_dump(int argc, char **argv, MIPS *m)
+int shell_dump(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
     
+    MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
@@ -329,10 +344,11 @@ int shell_dump(int argc, char **argv, MIPS *m)
     return COMMAND_OK;
 }
 
-int shell_help(int argc, char **argv, MIPS *m);
+int shell_help(int argc, char **argv, Shell_Env *e);
 
 static const Command commands[] = {
     // shortcuts
+    {"l",  shell_load, ""},
     {"r",  shell_run, ""},
     {"s",  shell_step, ""},
     {"si", shell_stepi, ""},
@@ -341,6 +357,7 @@ static const Command commands[] = {
     {"q",  shell_quit, ""},
     
     // full names
+    {"load",  shell_load, ""},
     {"reset", shell_reset, ""},
     {"dasm",  shell_dasm, ""},
     {"dreg",  shell_dreg, ""},
@@ -358,8 +375,10 @@ static const Command commands[] = {
     {NULL, NULL, NULL}
 };
 
-int shell_help(int argc, char **argv, MIPS *m)
+int shell_help(int argc, char **argv, Shell_Env *e)
 {
+    (void)e;
+    
     if ( argc > 1 )
     {
         const Command *c = commands;
@@ -395,7 +414,11 @@ int shell_help(int argc, char **argv, MIPS *m)
     return COMMAND_OK;
 }
 
-int execute_command(int argc, char **argv, MIPS *m)
+/*!
+    \internal
+    \brief Auxiliary function for shell command dispatch
+*/
+int execute_command(int argc, char **argv, Shell_Env *e)
 {
     const Command *c = commands;
     
@@ -405,7 +428,7 @@ int execute_command(int argc, char **argv, MIPS *m)
         {
             if ( c->name[i] == '\0' && (argv[0][i] == '\0' || argv[0][i] == ' ') )
             {
-                return c->handler(argc, argv, m);
+                return c->handler(argc, argv, e);
             } else if ( c->name[i] != argv[0][i] ) {
                 break;
             }
@@ -486,15 +509,21 @@ char** tokenize(char *cmd, int *argc)
 }
 
 /*!
+    \brief shell interface to simulator
+    \param cli_argc remaining CLI parameter count
+    \param cli_argv remaining CLI parameter values
     
+    Present a command prompt on the console to the user
+    offering various commands controlling the simulator.
 */
 int mipsim_shell(int cli_argc, char **cli_argv)
 {
     int argc, ret = COMMAND_OK;
     char *cmd, **argv;
     
-    MIPS *m = NULL;
-    ELF_File *f = NULL;
+    Shell_Env env;
+    env.m = NULL;
+    env.f = NULL;
     
     // try to load a file with leftover cli params
     argv = malloc(argc * sizeof(char*));
@@ -503,7 +532,7 @@ int mipsim_shell(int cli_argc, char **cli_argv)
         if ( *cli_argv[i] )
             argv[argc++] = cli_argv[i];
     
-    shell_load(argc, argv, &m, &f);
+    shell_load(argc, argv, &env);
     free(argv);
     
     while ( ret != COMMAND_EXIT )
@@ -516,13 +545,7 @@ int mipsim_shell(int cli_argc, char **cli_argv)
             
             argv = tokenize(cmd, &argc);
             
-            if ( !strcmp(argv[0], "load") || !strcmp(argv[0], "l") )
-            {
-                // special handling of load commands as it needs direct write access to m and f
-                ret = shell_load(argc, argv, &m, &f);
-            } else {
-                ret = execute_command(argc, argv, m);
-            }
+            ret = execute_command(argc, argv, &env);
             
             switch ( ret )
             {
@@ -547,8 +570,8 @@ int mipsim_shell(int cli_argc, char **cli_argv)
     /*
         always destroy emulated machine before ELF file
     */
-    mips_destroy(m);
-    elf_file_destroy(f);
+    mips_destroy(env.m);
+    elf_file_destroy(env.f);
     
     return 0;
 }
