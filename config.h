@@ -28,5 +28,6 @@ typedef struct _MIPSIM_Config {
 
 MIPSIM_Config* mipsim_config();
 int mipsim_config_init(int argc, char **argv);
+int mipsim_config_fini();
 
 #endif

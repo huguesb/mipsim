@@ -44,5 +44,10 @@ int main(int argc, char **argv)
     */
     mipsim_shell(argc, argv);
     
+    /*
+        Close any open log file
+    */
+    mipsim_config_fini();
+    
     return 0;
 }

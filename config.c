@@ -45,6 +45,39 @@ int mipsim_config_init(int argc, char **argv)
         } else if ( !strcmp(arg, "--debug") ) {
             *argv[i] = 0;
             cfg->io_mask |= IO_DEBUG;
+        } else if ( !strcmp(arg, "--trace") ) {
+            *argv[i] = 0;
+            cfg->io_mask |= IO_TRACE;
+        } else if ( !strcmp(arg, "--debug-log") ) {
+            *argv[i] = 0;
+            if ( i+1 < argc )
+            {
+                cfg->debug_log = fopen(argv[++i], "wt");
+                
+                if ( cfg->debug_log == NULL )
+                {
+                    mipsim_printf(IO_WARNING, "CLI: unable to open %s for writing\n", argv[i]);
+                }
+                
+                *argv[i] = 0;
+            } else {
+                mipsim_printf(IO_WARNING, "CLI: missing value for --debug-log switch\n");
+            }
+        } else if ( !strcmp(arg, "--trace-log") ) {
+            *argv[i] = 0;
+            if ( i+1 < argc )
+            {
+                cfg->trace_log = fopen(argv[++i], "wt");
+                
+                if ( cfg->trace_log == NULL )
+                {
+                    mipsim_printf(IO_WARNING, "CLI: unable to open %s for writing\n", argv[i]);
+                }
+                
+                *argv[i] = 0;
+            } else {
+                mipsim_printf(IO_WARNING, "CLI: missing value for --trace-log switch\n");
+            }
         } else if ( !strcmp(arg, "-t") ) {
             *argv[i] = 0;
             if ( i+1 < argc )
@@ -91,4 +124,19 @@ int mipsim_config_init(int argc, char **argv)
     }
     
     return 0;
+}
+
+int mipsim_config_fini()
+{
+    MIPSIM_Config *cfg = mipsim_config();
+    
+    if ( cfg->trace_log != NULL )
+    {
+        fclose(cfg->trace_log);
+    }
+    
+    if ( cfg->debug_log != NULL )
+    {
+        fclose(cfg->debug_log);
+    }
 }
