@@ -11,6 +11,7 @@
 #include "mips.h"
 
 #include "io.h"
+#include "util.h"
 #include "decode.h"
 
 extern void mips_init_memory(MIPS *m);
@@ -52,6 +53,35 @@ static const char *mips_fpr_names[32] = {
     "fp16", "fp17", "fp18", "fp19", "fp20", "fp21", "fp22", "fp23",
     "fp24", "fp25", "fp26", "fp27", "fp28", "fp29", "fp30", "fp31"
 };
+
+int mips_gpr_id(const char *name)
+{
+    if ( name == NULL )
+        return INVALID_REG;
+    
+    if ( *name == '$' )
+        ++name;
+    
+    if ( is_number(*name) )
+    {
+        // simple atoi from reg number
+        
+        int error;
+        int id = str_2_num(name, NULL, &error);
+        
+        if ( !error )
+            return id;
+        
+    } else if ( is_letter(*name) ) {
+        // string lookup from reg name
+        
+        for ( int i = 0; i < 32; ++i )
+            if ( !strcmp(name, mips_gpr_names[i]) )
+                return i;
+    }
+    
+    return INVALID_REG;
+}
 
 const char* mips_gpr_name(int reg)
 {

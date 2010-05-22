@@ -34,6 +34,9 @@ uint32_t str_2_num(const char *s, const char **end, int *error);
 
 typedef uint32_t (*_symbol_value)(const char *n, void *d, int *error);
 
+int is_number(char c);
+int is_letter(char c);
+
 uint32_t eval_expr(const char *s, _symbol_value eval_sym, void *d, int *error);
 
 #endif

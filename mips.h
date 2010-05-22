@@ -103,7 +103,9 @@ enum MIPS_Regnames {
     GP,
     SP,
     FP,
-    RA
+    RA,
+    
+    INVALID_REG = -1
 };
 
 enum {
@@ -215,7 +217,10 @@ enum MIPS_Architecture {
 };
 
 const char* mips_isa_name(int isa);
+
+int mips_gpr_id(const char *name);
 const char* mips_gpr_name(int reg);
+
 const char* mips_fpr_name(int reg);
 
 MIPS* mips_create(int arch);

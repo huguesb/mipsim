@@ -8,8 +8,8 @@
 **  Refer to the accompanying COPYING file for legalese.
 ****************************************************************************/
 
-#ifndef _MIPSIM_CLI_H_
-#define _MIPSIM_CLI_H_
+#ifndef _MIPSIM_SHELL_H_
+#define _MIPSIM_SHELL_H_
 
 #include "mips.h"
 

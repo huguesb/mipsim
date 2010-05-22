@@ -55,7 +55,7 @@ int shell_load(int argc, char **argv, Shell_Env *e)
 {
     if ( argc <= 1 )
     {
-        printf("load [filepath]\n");
+        printf("load <filepath>\n");
         return 1;
     }
     
@@ -187,7 +187,7 @@ int shell_run(int argc, char **argv, Shell_Env *e)
         
         if ( error )
         {
-            printf("Invalid parameter\n");
+            printf("Invalid <address> parameter\n");
             return COMMAND_PARAM_TYPE;
         }
         
@@ -224,7 +224,7 @@ int shell_step(int argc, char **argv, Shell_Env *e)
         
         if ( error )
         {
-            printf("Invalid parameter\n");
+            printf("Invalid <count> parameter\n");
             return COMMAND_PARAM_TYPE;
         }
     } else if ( argc != 1 ) {
@@ -250,7 +250,7 @@ int shell_stepi(int argc, char **argv, Shell_Env *e)
         
         if ( error )
         {
-            printf("Invalid parameter\n");
+            printf("Invalid <count> parameter\n");
             return COMMAND_PARAM_TYPE;
         }
     } else if ( argc != 1 ) {
@@ -275,7 +275,7 @@ int shell_trace(int argc, char **argv, Shell_Env *e)
         {
             n = (*param - '0');
         } else {
-            printf("trace expects a boolean parameter\n");
+            printf("trace [1 | 0]\n");
             return COMMAND_PARAM_TYPE;
         }
     } else if ( argc != 1 ) {
@@ -310,6 +310,22 @@ int shell_dreg(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
+    if ( argc != 2 )
+    {
+        printf("dreg <register>\n");
+        return COMMAND_PARAM_COUNT;
+    }
+    
+    int id = mips_gpr_id(argv[1]);
+    
+    if ( id == INVALID_REG )
+    {
+        printf("Invalid <register> parameter\n");
+        return COMMAND_PARAM_TYPE;
+    }
+    
+    printf("%s = 0x%08x\n", mips_gpr_name(id), m->hw.get_reg(&m->hw, id));
+    
     return COMMAND_OK;
 }
 
@@ -320,6 +336,31 @@ int shell_sreg(int argc, char **argv, Shell_Env *e)
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
+    
+    if ( argc != 3 )
+    {
+        printf("dreg <register> <value>\n");
+        return COMMAND_PARAM_COUNT;
+    }
+    
+    int id = mips_gpr_id(argv[1]);
+    
+    if ( id == INVALID_REG )
+    {
+        printf("Invalid <register> parameter\n");
+        return COMMAND_PARAM_TYPE;
+    }
+    
+    int error;
+    uint32_t value = eval_expr(argv[2], symbol_value, e, &error);
+    
+    if ( error )
+    {
+        printf("Invalid <value> parameter\n");
+        return COMMAND_PARAM_TYPE;
+    }
+    
+    m->hw.set_reg(&m->hw, id, value);
     
     return COMMAND_OK;
 }
@@ -341,7 +382,7 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
         
         if ( error )
         {
-            printf("Invalid parameters\n");
+            printf("Invalid <start> parameters\n");
             return COMMAND_PARAM_TYPE;
         }
         
@@ -350,7 +391,7 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
         
         if ( error || end < start )
         {
-            printf("Invalid parameters\n");
+            printf("Invalid <end> parameter\n");
             return COMMAND_PARAM_TYPE;
         }
         
@@ -372,7 +413,7 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
             printf("\n");
         }
     } else {
-        printf("dmem <address> [address]\n");
+        printf("dmem <start> [end]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -394,7 +435,7 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
         
         if ( error )
         {
-            printf("Invalid parameters\n");
+            printf("Invalid <addr> parameter\n");
             return COMMAND_PARAM_TYPE;
         }
         
@@ -402,7 +443,7 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
         
         if ( error )
         {
-            printf("Invalid parameters\n");
+            printf("Invalid <value> parameter\n");
             return COMMAND_PARAM_TYPE;
         }
         
@@ -411,9 +452,15 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
         if ( argc == 4 )
             n = eval_expr(argv[3], symbol_value, e, &error);
         
-        if ( addr == 0 || n == 0 || error || !bit_fit(value, n << 3) )
+        if ( error )
         {
-            printf("Invalid parameters\n");
+            printf("Invalid [bytecount] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        if ( !bit_fit(value, n << 3) )
+        {
+            printf("<value> too large for given [bytecount]\n");
             return COMMAND_PARAM_TYPE;
         }
         
@@ -426,7 +473,7 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
         else if ( n == 4 )
             m->mem.write_w(&m->mem, addr, value, &stat);
         else {
-            printf("Invalid bytecount %d not in {1, 2, 4}\n", n);
+            printf("Invalid [bytecount] : %d not in {1, 2, 4}\n", n);
             return COMMAND_INVALID;
         }
     } else {

@@ -67,7 +67,7 @@ uint32_t str_2_num(const char *s, const char **end, int *error)
             return 0;
         }
         
-        if ( r && (r * base <= r) )
+        if ( (r * base) / base != r )
         {
             if ( error != NULL )
                 *error = E_OVERFLOW;
@@ -90,7 +90,7 @@ uint32_t str_2_num(const char *s, const char **end, int *error)
     return r;
 }
 
-int is_num(char c)
+int is_number(char c)
 {
     return c >= '0' && c <= '9';
 }
@@ -98,7 +98,7 @@ int is_num(char c)
 int is_letter(char c)
 {
     c &= CASE_MASK;
-    return c >= 'a' && c <= 'z';
+    return c >= 'A' && c <= 'Z';
 }
 
 int is_ident(char c)
