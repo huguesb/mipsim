@@ -155,7 +155,7 @@ void _mips_set_gpr_p(MIPS_Processor *p, int gpr, MIPS_Native value)
     {
         if ( gpr > 0 && gpr < 32 )
         {
-            mipsim_printf(IO_TRACE, "\t%s = 0x%08x\n", mips_gpr_name(gpr & 31), value);
+            mipsim_printf(IO_TRACE, "\t%s = 0x%08x\n", mips_reg_name(gpr), value);
             
             ((MIPS_Processor_Private*)p->d)->r[gpr] = value;
         } else if ( gpr ) {
@@ -280,7 +280,7 @@ void _mips_set_gpr_cp(MIPS_Coprocessor *p, int gpr, MIPS_Native value)
     {
         if ( gpr >= 0 && gpr < 32 )
         {
-            mipsim_printf(IO_TRACE, "\t%s = 0x%08x\n", mips_fpr_name(gpr & 31), value);
+            mipsim_printf(IO_TRACE, "\t%s = 0x%08x\n", mips_reg_name(gpr | CP1), value);
             
             ((MIPS_Coprocessor_Private*)p->d)->r[gpr] = value;
         } else {

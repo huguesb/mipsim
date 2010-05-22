@@ -435,17 +435,7 @@ const MIPS_Instr opcodes[64] = {
 
 int print_reg(char *s, int i, int maxsz, int reg)
 {
-    const char *rn = mips_gpr_name(reg);
-    
-    while ( (i < maxsz) && (*rn != '\0') )
-        s[i++] = *rn++;
-    
-    return i;
-}
-
-int print_fp_reg(char *s, int i, int maxsz, int reg)
-{
-    const char *rn = mips_fpr_name(reg);
+    const char *rn = mips_reg_name(reg);
     
     while ( (i < maxsz) && (*rn != '\0') )
         s[i++] = *rn++;
@@ -491,15 +481,15 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
                 break;
                 
             case 'S' :
-                j = print_fp_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, fs);
+                j = print_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, fs | CP1);
                 break;
                 
             case 'T' :
-                j = print_fp_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, rt);
+                j = print_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, rt | CP1);
                 break;
                 
             case 'D' :
-                j = print_fp_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, fd);
+                j = print_reg(disasm_buffer, j, DISASM_BUFFER_SIZE, fd | CP1);
                 break;
                 
             case '<' :

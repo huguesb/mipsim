@@ -192,7 +192,7 @@ int shell_run(int argc, char **argv, Shell_Env *e)
         }
         
         printf("running from 0x%08x\n", addr);
-        m->hw.set_pc(&m->hw, addr);
+        mips_set_reg(m, PC, addr);
     } else if ( argc != 1 ) {
         printf("run [address]\n");
         return COMMAND_PARAM_COUNT;
@@ -291,6 +291,32 @@ int shell_trace(int argc, char **argv, Shell_Env *e)
     return COMMAND_OK;
 }
 
+int shell_dump(int argc, char **argv, Shell_Env *e)
+{
+    (void)argc; (void)argv;
+    
+    MIPS *m = e->m;
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    printf("    pc = 0x%08x\n", mips_get_reg(m, PC));
+    
+    printf("    hi = 0x%08x        lo = 0x%08x\n",
+           mips_get_reg(m, HI),
+           mips_get_reg(m, LO));
+    
+    for ( int i = 0; i < 8; ++i )
+    {
+        printf("%6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x\n",
+               mips_reg_name(4*i),     mips_get_reg(m, 4*i),
+               mips_reg_name(4*i + 1), mips_get_reg(m, 4*i+1),
+               mips_reg_name(4*i + 2), mips_get_reg(m, 4*i+2),
+               mips_reg_name(4*i + 3), mips_get_reg(m, 4*i+3));
+    }
+    
+    return COMMAND_OK;
+}
+
 int shell_dasm(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
@@ -310,13 +336,15 @@ int shell_dreg(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
-    if ( argc != 2 )
+    if ( argc == 1 )
     {
+        return shell_dump(argc, argv, e);
+    } else if ( argc != 2 ) {
         printf("dreg <register>\n");
         return COMMAND_PARAM_COUNT;
     }
     
-    int id = mips_gpr_id(argv[1]);
+    int id = mips_reg_id(argv[1]);
     
     if ( id == INVALID_REG )
     {
@@ -324,7 +352,7 @@ int shell_dreg(int argc, char **argv, Shell_Env *e)
         return COMMAND_PARAM_TYPE;
     }
     
-    printf("%s = 0x%08x\n", mips_gpr_name(id), m->hw.get_reg(&m->hw, id));
+    printf("%s = 0x%08x\n", mips_reg_name(id), mips_get_reg(m, id));
     
     return COMMAND_OK;
 }
@@ -343,7 +371,7 @@ int shell_sreg(int argc, char **argv, Shell_Env *e)
         return COMMAND_PARAM_COUNT;
     }
     
-    int id = mips_gpr_id(argv[1]);
+    int id = mips_reg_id(argv[1]);
     
     if ( id == INVALID_REG )
     {
@@ -360,7 +388,7 @@ int shell_sreg(int argc, char **argv, Shell_Env *e)
         return COMMAND_PARAM_TYPE;
     }
     
-    m->hw.set_reg(&m->hw, id, value);
+    mips_set_reg(m, id, value);
     
     return COMMAND_OK;
 }
@@ -467,11 +495,11 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
         int stat;
         
         if ( n == 1 )
-            m->mem.write_b(&m->mem, addr, value, &stat);
+            mips_write_b(m, addr, value, &stat);
         else if ( n == 2 )
-            m->mem.write_h(&m->mem, addr, value, &stat);
+            mips_write_h(m, addr, value, &stat);
         else if ( n == 4 )
-            m->mem.write_w(&m->mem, addr, value, &stat);
+            mips_write_w(m, addr, value, &stat);
         else {
             printf("Invalid [bytecount] : %d not in {1, 2, 4}\n", n);
             return COMMAND_INVALID;
@@ -479,30 +507,6 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
     } else {
         printf("smem <address> <value> [bytecount]\n");
         return COMMAND_PARAM_COUNT;
-    }
-    
-    return COMMAND_OK;
-}
-
-int shell_dump(int argc, char **argv, Shell_Env *e)
-{
-    (void)argc; (void)argv;
-    
-    MIPS *m = e->m;
-    if ( m == NULL )
-        return COMMAND_NEED_TARGET;
-    
-    printf("    pc = 0x%08x\n", m->hw.get_pc(&m->hw));
-    
-    printf("    hi = 0x%08x        lo = 0x%08x\n", m->hw.get_hi(&m->hw), m->hw.get_lo(&m->hw));
-    
-    for ( int i = 0; i < 8; ++i )
-    {
-        printf("%6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x    %6s = 0x%08x\n",
-               mips_gpr_name(4*i),     m->hw.get_reg(&m->hw, 4*i),
-               mips_gpr_name(4*i + 1), m->hw.get_reg(&m->hw, 4*i+1),
-               mips_gpr_name(4*i + 2), m->hw.get_reg(&m->hw, 4*i+2),
-               mips_gpr_name(4*i + 3), m->hw.get_reg(&m->hw, 4*i+3));
     }
     
     return COMMAND_OK;

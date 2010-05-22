@@ -139,4 +139,6 @@ int mipsim_config_fini()
     {
         fclose(cfg->debug_log);
     }
+    
+    return 0;
 }

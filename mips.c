@@ -40,11 +40,22 @@ const char* mips_isa_name(int isa)
     return isa >= MIPS_ARCH_FIRST && isa < MIPS_ARCH_LAST ? mips_isa_names[isa - MIPS_ARCH_FIRST] : NULL;
 }
 
+static const char *mips_default_reg_names[32] = {
+    "$0",  "$1",  "$2",  "$3",  "$4",  "$5",  "$6",  "$7",
+    "$8",  "$9",  "$10", "$11", "$12", "$13", "$14", "$15",
+    "$16", "$17", "$18", "$19", "$20", "$21", "$22", "$23",
+    "$24", "$25", "$26", "$27", "$28", "$29", "$30", "$31"
+};
+
 static const char *mips_gpr_names[32] = {
     "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3",
     "t0",   "t1", "t2", "t3", "t4", "t5", "t6", "t7",
     "s0",   "s1", "s2", "s3", "s4", "s5", "s6", "s7",
     "t8",   "t9", "k0", "k1", "gp", "sp", "fp", "ra"
+};
+
+static const char *mips_spr_names[3] = {
+    "pc", "hi", "lo"
 };
 
 static const char *mips_fpr_names[32] = {
@@ -54,7 +65,7 @@ static const char *mips_fpr_names[32] = {
     "fp24", "fp25", "fp26", "fp27", "fp28", "fp29", "fp30", "fp31"
 };
 
-int mips_gpr_id(const char *name)
+int mips_reg_id(const char *name)
 {
     if ( name == NULL )
         return INVALID_REG;
@@ -78,19 +89,40 @@ int mips_gpr_id(const char *name)
         for ( int i = 0; i < 32; ++i )
             if ( !strcmp(name, mips_gpr_names[i]) )
                 return i;
+        
+        for ( int i = 0; i < 3; ++i )
+            if ( !strcmp(name, mips_spr_names[i]) )
+                return i | SPR;
+        
+        for ( int i = 0; i < 32; ++i )
+            if ( !strcmp(name, mips_fpr_names[i]) )
+                return i | CP1;
     }
     
     return INVALID_REG;
 }
 
-const char* mips_gpr_name(int reg)
+const char* mips_reg_name(int reg)
 {
-    return reg >= 0 && reg < 32 ? mips_gpr_names[reg & 31] : NULL;
-}
-
-const char* mips_fpr_name(int reg)
-{
-    return reg >= 0 && reg < 32 ? mips_fpr_names[reg & 31] : NULL;
+    int flags = reg & ~0xFF;
+    reg &= 0xFF;
+    
+    // TODO : support for CPx ctrl regs
+    
+    if ( !flags )
+        return reg < 32 ? mips_gpr_names[reg] : NULL;
+    else if ( flags == SPR )
+        return reg < 3 ? mips_spr_names[reg] : NULL;
+    else if ( flags == CP0 )
+        return reg < 32 ? mips_default_reg_names[reg] : NULL;
+    else if ( flags == CP1 )
+        return reg < 32 ? mips_fpr_names[reg] : NULL;
+    else if ( flags == CP2 )
+        return reg < 32 ? mips_default_reg_names[reg] : NULL;
+    else if ( flags == CP3 )
+        return reg < 32 ? mips_default_reg_names[reg] : NULL;
+    
+    return NULL;
 }
 
 MIPS* mips_create(int arch)
@@ -189,6 +221,52 @@ void mips_stop(MIPS *m, int reason)
         m->stop_reason = reason;
     } else {
         printf("should be stopped already...\n");
+    }
+}
+
+MIPS_Native mips_get_reg(MIPS *m, int id)
+{
+    int flags = id & ~0xFF;
+    int reg = id & 0xFF;
+    
+    if ( !flags )
+    {
+        return m->hw.get_reg(&m->hw, reg);
+    } else if ( flags == SPR ) {
+        if ( reg == (PC & 0xFF) )
+            return m->hw.get_pc(&m->hw);
+        else if ( reg == (HI & 0xFF) )
+            return m->hw.get_hi(&m->hw);
+        else if ( reg == (LO & 0xFF) )
+            return m->hw.get_lo(&m->hw);
+    } else if ( flags & CP_BIT ) {
+        MIPS_Coprocessor *cp = m->cp + ((flags >> CP_SHIFT) & 3);
+        return flags & COND_BIT ? cp->get_ctrl(cp, id) : cp->get_reg(cp, id);
+    }
+    
+    mipsim_printf(IO_WARNING, "Trying to read inexistant register\n");
+    
+    return 0;
+}
+
+void mips_set_reg(MIPS *m, int id, MIPS_Native v)
+{
+    int flags = id & ~0xFF;
+    int reg = id & 0xFF;
+    
+    if ( !flags )
+    {
+        return m->hw.set_reg(&m->hw, reg, v);
+    } else if ( flags == SPR ) {
+        if ( reg == (PC & 0xFF) )
+            return m->hw.set_pc(&m->hw, v);
+        else if ( reg == (HI & 0xFF) )
+            return m->hw.set_hi(&m->hw, v);
+        else if ( reg == (LO & 0xFF) )
+            return m->hw.set_lo(&m->hw, v);
+    } else if ( flags & CP_BIT ) {
+        MIPS_Coprocessor *cp = m->cp + ((flags >> CP_SHIFT) & 3);
+        return flags & COND_BIT ? cp->set_ctrl(cp, id, v) : cp->set_reg(cp, id, v);
     }
 }
 

@@ -35,6 +35,15 @@ uint8_t value(uint8_t c)
 
 /*!
     \brief convert a string to an integer, with error checks
+    \param s string to convert
+    \param end if non NULL, will be set to last read character
+    \param error, if non NULL, will hold error code
+    \return value represented by the string
+    
+    In case of error, the return value will be zero.
+    
+    The input string can be in either octal, decimal or hexadecimal
+    format, with proper C prefixes.
 */
 uint32_t str_2_num(const char *s, const char **end, int *error)
 {
@@ -107,8 +116,11 @@ int is_ident(char c)
 }
 
 /*!
-    \brief Evaluate an expression ot an integer
-    
+    \brief Evaluate an expression to an integer
+    \param s expression
+    \param eval_sym auxiliary function for symbol evaluation
+    \param[out] error where to store error code if not NULL
+    \return result of epxression evaluation
 */
 uint32_t eval_expr(const char *s, _symbol_value eval_sym, void *d, int *error)
 {

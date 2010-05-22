@@ -105,6 +105,20 @@ enum MIPS_Regnames {
     FP,
     RA,
     
+    SPR = 0x100,
+    PC = SPR,
+    HI,
+    LO,
+    
+    CP_BIT   = 0x400,
+    CP_SHIFT = 8,
+    COND_BIT = 0x80,
+    
+    CP0 = 0x400,
+    CP1 = 0x500,
+    CP2 = 0x600,
+    CP3 = 0x700,
+    
     INVALID_REG = -1
 };
 
@@ -218,10 +232,8 @@ enum MIPS_Architecture {
 
 const char* mips_isa_name(int isa);
 
-int mips_gpr_id(const char *name);
-const char* mips_gpr_name(int reg);
-
-const char* mips_fpr_name(int reg);
+int mips_reg_id(const char *name);
+const char* mips_reg_name(int reg);
 
 MIPS* mips_create(int arch);
 void mips_destroy(MIPS *m);
@@ -229,6 +241,9 @@ void mips_reset(MIPS *m);
 
 int mips_exec(MIPS *m, uint32_t n, int skip_proc);
 void mips_stop(MIPS *m, int reason);
+
+MIPS_Native mips_get_reg(MIPS *m, int id);
+void mips_set_reg(MIPS *m, int id, MIPS_Native v);
 
 uint8_t  mips_read_b(MIPS *m, MIPS_Addr a, int *stat);
 uint16_t mips_read_h(MIPS *m, MIPS_Addr a, int *stat);

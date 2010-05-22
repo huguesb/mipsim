@@ -170,7 +170,7 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         }
         
         if ( f->header )
-            m->hw.set_pc(&m->hw, f->header->e_entry);
+            mips_set_reg(m, PC, f->header->e_entry);
     } else if ( f->header->e_type == ET_REL ) {
         // when loading a relocatable binary :
         //  - perform section placement according to constraints
@@ -233,8 +233,8 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         }
         
         // default register values
-        m->hw.set_reg(&m->hw, SP, la);
-        m->hw.set_pc(&m->hw, cfg->reloc_text);
+        mips_set_reg(m, SP, la);
+        mips_set_reg(m, PC, cfg->reloc_text);
     }
     
     return 0;

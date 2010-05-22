@@ -36,14 +36,14 @@ int mips_syscall(MIPS *m, int code)
     {
         case 1 :
         {
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            MIPS_Native a0 = mips_get_reg(m, A0);
             mipsim_printf(IO_MONITOR, "%d", a0);
             break;
         }
             
         case 4 :
         {
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            MIPS_Native a0 = mips_get_reg(m, A0);
             char *s = fetch_str(m, a0);
             mipsim_printf(IO_MONITOR, "%s", s);
             free(s);
@@ -58,8 +58,8 @@ int mips_syscall(MIPS *m, int code)
             
         case 8 :
         {
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
-            MIPS_Native a1 = m->hw.get_reg(&m->hw, A1);
+            MIPS_Native a0 = mips_get_reg(m, A0);
+            MIPS_Native a1 = mips_get_reg(m, A1);
             
             char *buffer = (char*)malloc(a1);
             mipsim_read(IO_MONITOR, 0, buffer, a1);
@@ -93,13 +93,13 @@ int mips_monitor(MIPS *m, int entry)
         case 12 :
         {
             /* int open(char *path,int flags) */
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
-            MIPS_Native a1 = m->hw.get_reg(&m->hw, A1);
+            MIPS_Native a0 = mips_get_reg(m, A0);
+            MIPS_Native a1 = mips_get_reg(m, A1);
             
             mipsim_printf(IO_TRACE, "open : %08x, %08x\n", a0, a1);
             
             char *s = fetch_str(m, a0);
-            m->hw.set_reg(&m->hw, V0, mipsim_open(IO_MONITOR, s, a1));
+            mips_set_reg(m, V0, mipsim_open(IO_MONITOR, s, a1));
             free(s);
             
             break;
@@ -108,14 +108,14 @@ int mips_monitor(MIPS *m, int entry)
         case 14 :
         {
             /* int read(int file,char *ptr,int len) */
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
-            MIPS_Native a1 = m->hw.get_reg(&m->hw, A1);
-            MIPS_Native a2 = m->hw.get_reg(&m->hw, A2);
+            MIPS_Native a0 = mips_get_reg(m, A0);
+            MIPS_Native a1 = mips_get_reg(m, A1);
+            MIPS_Native a2 = mips_get_reg(m, A2);
             
             mipsim_printf(IO_TRACE, "read : %08x, %08x, %08x\n", a0, a1, a2);
             
             char *buffer = (char*)malloc(a2);
-            m->hw.set_reg(&m->hw, V0, mipsim_read(IO_MONITOR, a0, buffer, a2));
+            mips_set_reg(m, V0, mipsim_read(IO_MONITOR, a0, buffer, a2));
             for ( MIPS_Native i = 0; i < a2; ++i )
                 mips_write_b(m, a1 + i, buffer[i], NULL);
             free(buffer);
@@ -126,16 +126,16 @@ int mips_monitor(MIPS *m, int entry)
         case 16 :
         {
             /* int write(int file,char *ptr,int len) */
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
-            MIPS_Native a1 = m->hw.get_reg(&m->hw, A1);
-            MIPS_Native a2 = m->hw.get_reg(&m->hw, A2);
+            MIPS_Native a0 = mips_get_reg(m, A0);
+            MIPS_Native a1 = mips_get_reg(m, A1);
+            MIPS_Native a2 = mips_get_reg(m, A2);
             
             mipsim_printf(IO_TRACE, "write : %08x, %08x, %08x\n", a0, a1, a2);
             
             char *buffer = (char*)malloc(a2);
             for ( MIPS_Native i = 0; i < a2; ++i )
                 buffer[i] = mips_read_b(m, a1 + i, NULL);
-            m->hw.set_reg(&m->hw, V0, mipsim_write(IO_MONITOR, a0, buffer, a2));
+            mips_set_reg(m, V0, mipsim_write(IO_MONITOR, a0, buffer, a2));
             free(buffer);
             
             break;
@@ -144,11 +144,11 @@ int mips_monitor(MIPS *m, int entry)
         case 20 :
         {
             /* int close(int file) */
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            MIPS_Native a0 = mips_get_reg(m, A0);
             
             mipsim_printf(IO_TRACE, "close : %08x\n", a0);
             
-            m->hw.set_reg(&m->hw, V0, mipsim_close(IO_MONITOR, a0));
+            mips_set_reg(m, V0, mipsim_close(IO_MONITOR, a0));
             break;
         }
             
@@ -157,13 +157,13 @@ int mips_monitor(MIPS *m, int entry)
             
             mipsim_printf(IO_TRACE, "inbyte\n");
             
-            m->hw.set_reg(&m->hw, V0, mipsim_inbyte(IO_MONITOR));
+            mips_set_reg(m, V0, mipsim_inbyte(IO_MONITOR));
             break;
             
         case 24 :
         {
             /* void outbyte(char chr) : write a byte to "stdout" */
-            MIPS_Native a0 = m->hw.get_reg(&m->hw, A0);
+            MIPS_Native a0 = mips_get_reg(m, A0);
             
             mipsim_printf(IO_TRACE, "outbyte : %08x\n", a0);
             
@@ -186,7 +186,7 @@ int mips_monitor(MIPS *m, int entry)
             /*      [A0 + 4] = instruction cache size */
             /*      [A0 + 8] = data cache size */
             
-            MIPS_Native a = m->hw.get_reg(&m->hw, A0);
+            MIPS_Native a = mips_get_reg(m, A0);
             
             mipsim_printf(IO_TRACE, "get_mem_info : 0x%08x", a);
             
@@ -208,7 +208,7 @@ int mips_monitor(MIPS *m, int entry)
             /*      A2 = optional argument 2 */
             /*      A3 = optional argument 3 */
             /* out: void */
-            MIPS_Addr a0 = m->hw.get_reg(&m->hw, A0);
+            MIPS_Addr a0 = mips_get_reg(m, A0);
             
             mipsim_printf(IO_TRACE, "printf : %08x\n", a0);
             break;
