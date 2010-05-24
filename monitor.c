@@ -12,6 +12,10 @@
 
 #include "io.h"
 
+/*!
+    \internal
+    \brief Fetch a NULL-terminated string from the memory of a simulated machine
+*/
 char* fetch_str(MIPS *m, MIPS_Addr a)
 {
     MIPS_Native len = 0;
@@ -27,8 +31,10 @@ char* fetch_str(MIPS *m, MIPS_Addr a)
     return s;
 }
 
-/*
-    support for some syscalls (required by project spec)
+/*!
+    \brief Syscall handler
+    
+    Support for some syscalls required by project spec.
 */
 int mips_syscall(MIPS *m, int code)
 {
@@ -83,8 +89,10 @@ int mips_syscall(MIPS *m, int code)
     return MIPS_OK;
 }
 
-/*
-    support for some idt/pmon entry points (required for C/newlib support) 
+/*!
+    \brief Monitor handler
+    
+    Support for some idt/pmon entry points required for C/newlib support. 
 */
 int mips_monitor(MIPS *m, int entry)
 {

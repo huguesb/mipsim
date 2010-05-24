@@ -16,11 +16,17 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+/*!
+    \brief File I/O gateway
+*/
 int mipsim_open (int cxt, const char *path, int flags)
 {
     return 0; //open(path, flags);
 }
 
+/*!
+    \brief File I/O gateway
+*/
 int mipsim_read (int cxt, int file, char *d, int len)
 {
     if ( cxt == IO_MONITOR && file == 0 )
@@ -34,6 +40,9 @@ int mipsim_read (int cxt, int file, char *d, int len)
     return 0;
 }
 
+/*!
+    \brief File I/O gateway
+*/
 int mipsim_write(int cxt, int file, char *d, int len)
 {
     if ( cxt == IO_MONITOR )
@@ -48,21 +57,38 @@ int mipsim_write(int cxt, int file, char *d, int len)
     return 0;
 }
 
+/*!
+    \brief File I/O gateway
+*/
 int mipsim_close(int cxt, int file)
 {
     return 0; //close(file);
 }
 
+/*!
+    \brief Console I/O gateway
+*/
 char mipsim_inbyte (int cxt)
 {
     return fgetc(stdin);
 }
 
+/*!
+    \brief Console I/O gateway
+*/
 void mipsim_outbyte(int cxt, char c)
 {
 //     putc(c);
 }
 
+/*!
+    \brief printf gateway
+    
+    This function redirects printf output to the appropriate medium based on \a cxt and
+    the global configuration
+    
+    \see mipsim_config
+*/
 int mipsim_printf(int cxt, const char *fmt, ...)
 {
     int ret = 0;

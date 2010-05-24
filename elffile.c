@@ -952,6 +952,10 @@ int elf_file_load(ELF_File *elf, const char *filename)
     return exit_code;
 }
 
+/*!
+    \internal
+    \brief Compute the address of a symbol for relocation
+*/
 ELF32_Addr elf_symbol_address(ELF_File *elf, ELF_Sym *sym)
 {
     if ( elf == NULL || sym == NULL )

@@ -171,6 +171,9 @@ void _mips_sig_ex(MIPS_Processor *p, int exception)
     mipsim_printf(IO_WARNING, "exception %d\n", exception);
 }
 
+/*!
+    \brief Initialize a processor object
+*/
 void mips_init_processor(MIPS *m)
 {
     MIPS_Processor *hw = &m->hw;
@@ -197,6 +200,9 @@ void mips_init_processor(MIPS *m)
     ((MIPS_Processor_Private*)hw->d)->m = m;
 }
 
+/*!
+    \brief Release all memory used by a processor object
+*/
 void mips_cleanup_processor(MIPS_Processor *hw)
 {
     free(hw->d);
@@ -407,6 +413,15 @@ void _mips_set_ctrl_cp0(MIPS_Coprocessor *p, int gpr, MIPS_Native value)
     }
 }
 
+/*!
+    \brief Initialize a coprocessor object
+    
+    Coprocessor serve different purposes.
+    
+    CP0 holds HW ctrl/status registers
+    CP1 is the FPU
+    CP2 and CP3 are rarely used and are initilized with dummy handlers
+*/
 void mips_init_coprocessor(MIPS *m, int n)
 {
     MIPS_Coprocessor *hw = &m->cp[n];
@@ -444,6 +459,9 @@ void mips_init_coprocessor(MIPS *m, int n)
     ((MIPS_Coprocessor_Private*)hw->d)->m = m;
 }
 
+/*!
+    \brief Release all memory used by a coprocessor object
+*/
 void mips_cleanup_coprocessor(MIPS_Coprocessor *hw)
 {
     free(hw->d);

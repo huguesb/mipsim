@@ -15,12 +15,23 @@
 #include "mips.h"
 #include "io.h"
 
+/*!
+    \brief Accessor to the global configuration of the application
+*/
 MIPSIM_Config* mipsim_config()
 {
     static MIPSIM_Config cfg;
     return &cfg;
 }
 
+/*!
+    \brief Initialize the global configuration based on CLI parameters
+    \param argc argument count
+    \param argv argument values
+    
+    \note Consumed argument are nullified (the first character of each
+    consumed value is set to 0 to make them empty strings).
+*/
 int mipsim_config_init(int argc, char **argv)
 {
     MIPSIM_Config *cfg = mipsim_config();
@@ -126,6 +137,9 @@ int mipsim_config_init(int argc, char **argv)
     return 0;
 }
 
+/*!
+    \brief Release all memory used by the global configuration
+*/
 int mipsim_config_fini()
 {
     MIPSIM_Config *cfg = mipsim_config();

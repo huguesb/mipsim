@@ -23,19 +23,23 @@ typedef int32_t MIPS_NativeU;
 typedef struct _MIPS_Memory MIPS_Memory;
 
 enum {
-    MEM_OK,
-    MEM_UNMAPPED,
-    MEM_READONLY,
-    MEM_NOEXEC,
-    MEM_FWMON
+    MEM_OK       = 0,
+    MEM_UNMAPPED = 1,
+    MEM_READONLY = 2,
+    MEM_NOEXEC   = 4,
+    MEM_FWMON    = 8,
+    
+    MEM_RWX      = 0,
+    MEM_RW       = MEM_NOEXEC,
+    MEM_RX       = MEM_READONLY,
+    MEM_R        = MEM_READONLY | MEM_NOEXEC
 };
 
 typedef void (*mem_unmap)(MIPS_Memory *m);
 
-typedef int (*mem_map_alloc)(MIPS_Memory *m, MIPS_Addr a, uint32_t s);
-typedef int (*mem_map_ro)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, uint8_t *d);
-typedef int (*mem_map_rw)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, uint8_t *d);
-typedef int (*mem_map_redir)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, MIPS_Memory *r);
+typedef int (*mem_map_alloc)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, short flags);
+typedef int (*mem_map_static)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, uint8_t *d, short flags);
+typedef int (*mem_map_redir)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, MIPS_Memory *r, short flags);
 
 typedef uint8_t  (*mem_read_byte) (MIPS_Memory *m, MIPS_Addr a, int *stat);
 typedef uint16_t (*mem_read_half) (MIPS_Memory *m, MIPS_Addr a, int *stat);
@@ -50,10 +54,9 @@ typedef void (*mem_write_dword)(MIPS_Memory *m, MIPS_Addr a, uint64_t d, int *st
 struct _MIPS_Memory {
     mem_unmap     unmap;
     
-    mem_map_ro    map_ro;
-    mem_map_rw    map_rw;
-    mem_map_redir map_redir;
-    mem_map_alloc map_alloc;
+    mem_map_static map_static;
+    mem_map_alloc  map_alloc;
+    mem_map_redir  map_redir;
     
     mem_read_byte  read_b;
     mem_read_half  read_h;
@@ -204,7 +207,6 @@ struct _MIPS {
     int stop_reason;
 };
 
-
 enum MIPS_Architecture {
     MIPS_ARCH_NONE,
     
@@ -242,6 +244,10 @@ void mips_reset(MIPS *m);
 int mips_exec(MIPS *m, uint32_t n, int skip_proc);
 void mips_stop(MIPS *m, int reason);
 
+/*
+    helpers to abstract away some of the not so nice implementation details
+*/
+
 MIPS_Native mips_get_reg(MIPS *m, int id);
 void mips_set_reg(MIPS *m, int id, MIPS_Native v);
 
@@ -254,5 +260,24 @@ void mips_write_b(MIPS *m, MIPS_Addr a, uint8_t b,  int *stat);
 void mips_write_h(MIPS *m, MIPS_Addr a, uint16_t h, int *stat);
 void mips_write_w(MIPS *m, MIPS_Addr a, uint32_t w, int *stat);
 void mips_write_d(MIPS *m, MIPS_Addr a, uint64_t d, int *stat);
+
+enum {
+    BKPT_MEM_X,
+    BKPT_MEM_R,
+    BKPT_MEM_W,
+    BKPT_OPCODE,
+    
+    BKPT_DISABLED = 0x10000
+};
+
+typedef struct _Breakpoint {
+    int type;
+    MIPS_Addr start, end, mask;
+} Breakpoint;
+
+int mips_breakpoint_add(MIPS *m, int type, MIPS_Addr start, MIPS_Addr end, MIPS_Addr mask);
+void mips_breakpoint_remove(MIPS *m, int id);
+
+Breakpoint* mips_breakpoint(MIPS *m, int id);
 
 #endif

@@ -35,6 +35,9 @@ static const char *mips_isa_names[] = {
     "MIPS 64"
 };
 
+/*!
+    \brief Give the verbose name of an ISA version
+*/
 const char* mips_isa_name(int isa)
 {
     return isa >= MIPS_ARCH_FIRST && isa < MIPS_ARCH_LAST ? mips_isa_names[isa - MIPS_ARCH_FIRST] : NULL;
@@ -65,6 +68,9 @@ static const char *mips_fpr_names[32] = {
     "fp24", "fp25", "fp26", "fp27", "fp28", "fp29", "fp30", "fp31"
 };
 
+/*!
+    \brief Convert a register name into a register ID
+*/
 int mips_reg_id(const char *name)
 {
     if ( name == NULL )
@@ -102,6 +108,9 @@ int mips_reg_id(const char *name)
     return INVALID_REG;
 }
 
+/*!
+    \brief Convert a register ID into a register name
+*/
 const char* mips_reg_name(int reg)
 {
     int flags = reg & ~0xFF;
@@ -125,6 +134,10 @@ const char* mips_reg_name(int reg)
     return NULL;
 }
 
+/*!
+    \brief Creates a simulated machine
+    \param arch Architecture to simulate
+*/
 MIPS* mips_create(int arch)
 {
     if ( arch <= MIPS_ARCH_NONE || arch >= MIPS_ARCH_LAST )
@@ -148,6 +161,9 @@ MIPS* mips_create(int arch)
     return m;
 }
 
+/*!
+    \brief Reset the state of a simulated machine
+*/
 void mips_reset(MIPS *m)
 {
     if ( m == NULL )
@@ -164,6 +180,9 @@ void mips_reset(MIPS *m)
     mips_init_memory(m);
 }
 
+/*!
+    \brief Release all memory used by a simulated machine
+*/
 void mips_destroy(MIPS *m)
 {
     if ( m == NULL )
@@ -180,6 +199,17 @@ void mips_destroy(MIPS *m)
     free(m);
 }
 
+/*!
+    \brief Simulate a machine
+    \param m machine
+    \param n number of instructions to simulate
+    \param skip_proc whether to skip procedure calls
+    \return stop reason
+    
+    If \a skip_proc is non-zero, procdedure calls will be skipped.
+    Please note though that only ABI-conforming procedure calls
+    will be detected and correctly skipped.
+*/
 int mips_exec(MIPS *m, uint32_t n, int skip_proc)
 {
     if ( m == NULL || m->decode == NULL )
@@ -214,6 +244,10 @@ int mips_exec(MIPS *m, uint32_t n, int skip_proc)
     return m->stop_reason;
 }
 
+/*!
+    \brief Stop the execution of a simulated machine
+    \param reason Stop reason
+*/
 void mips_stop(MIPS *m, int reason)
 {
     if ( m->stop_reason == MIPS_OK ) 
@@ -224,6 +258,9 @@ void mips_stop(MIPS *m, int reason)
     }
 }
 
+/*!
+    \brief Getter to simulated machine registers
+*/
 MIPS_Native mips_get_reg(MIPS *m, int id)
 {
     int flags = id & ~0xFF;
@@ -249,6 +286,9 @@ MIPS_Native mips_get_reg(MIPS *m, int id)
     return 0;
 }
 
+/*!
+    \brief Setter to simulated machine registers
+*/
 void mips_set_reg(MIPS *m, int id, MIPS_Native v)
 {
     int flags = id & ~0xFF;
@@ -270,42 +310,91 @@ void mips_set_reg(MIPS *m, int id, MIPS_Native v)
     }
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 uint8_t  mips_read_b(MIPS *m, MIPS_Addr a, int *stat)
 {
     return m->mem.read_b(&m->mem, a, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 uint16_t mips_read_h(MIPS *m, MIPS_Addr a, int *stat)
 {
     return m->mem.read_h(&m->mem, a, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 uint32_t mips_read_w(MIPS *m, MIPS_Addr a, int *stat)
 {
     return m->mem.read_w(&m->mem, a, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 uint64_t mips_read_d(MIPS *m, MIPS_Addr a, int *stat)
 {
     return m->mem.read_d(&m->mem, a, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 void mips_write_b(MIPS *m, MIPS_Addr a, uint8_t b,  int *stat)
 {
     m->mem.write_b(&m->mem, a, b, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 void mips_write_h(MIPS *m, MIPS_Addr a, uint16_t h, int *stat)
 {
     m->mem.write_h(&m->mem, a, h, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 void mips_write_w(MIPS *m, MIPS_Addr a, uint32_t w, int *stat)
 {
     m->mem.write_w(&m->mem, a, w, stat);
 }
 
+/*!
+    \brief Helper accessor to simulated machine memory
+*/
 void mips_write_d(MIPS *m, MIPS_Addr a, uint64_t d, int *stat)
 {
     m->mem.write_d(&m->mem, a, d, stat);
+}
+
+/*!
+    \brief Add a breakpoint to a simulated machine
+*/
+int mips_breakpoint_add(MIPS *m, int type, MIPS_Addr start, MIPS_Addr end, MIPS_Addr mask)
+{
+    
+    return 0;
+}
+
+/*!
+    \brief Remove a breakpoint from a simulated machine
+*/
+void mips_breakpoint_remove(MIPS *m, int id)
+{
+    
+}
+
+/*!
+    \brief Access breakpoint data
+*/
+Breakpoint* mips_breakpoint(MIPS *m, int id)
+{
+    return NULL;
 }
