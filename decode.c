@@ -523,20 +523,35 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
 
 int mips_universal_decode(MIPS *m)
 {
+    MIPS_Native pc = m->hw.get_pc(&m->hw);
+    
+    if ( pc & 3 )
+    {
+        mipsim_printf(IO_WARNING, "Segfault : Unaligned PC\n");
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
+    
+    // TODO Check for MEM_READ and MEM_EXEC breakpoints here
+    
     int stat;
     uint32_t ir = m->hw.fetch(&m->hw, &stat);
     
     if ( stat == MEM_FWMON )
         return MIPS_OK;
     
-    if ( stat != MEM_OK )
+    if ( stat & MEM_UNMAPPED )
     {
-        mipsim_printf(IO_TRACE, "SEGFAULT\n");
+        mipsim_printf(IO_TRACE, "Segfault : PC out of mapped memory\n");
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    } else  if ( stat & MEM_NOEXEC ) {
+        mipsim_printf(IO_TRACE, "Segfault : PC out of executable memory\n");
         mips_stop(m, MIPS_ERROR);
         return MIPS_ERROR;
     }
     
-    MIPS_Native pc = m->hw.get_pc(&m->hw);
+    // TODO check for OPCODE breakpoints here
     
     mipsim_printf(IO_TRACE, "%08x:\t%08x\t", (uint32_t)pc, ir);
     
@@ -1093,6 +1108,12 @@ int decode_lh      (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
     
+    if ( a & 1 )
+    {
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
+    
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int16_t)mips_read_h(m, a, &stat));
@@ -1103,6 +1124,12 @@ int decode_lh      (MIPS *m, uint32_t ir)
 int decode_lhu     (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
+    
+    if ( a & 1 )
+    {
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
     
     int stat;
     
@@ -1115,6 +1142,12 @@ int decode_lw      (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
     
+    if ( a & 3 )
+    {
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
+    
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int32_t)mips_read_w(m, a, &stat));
@@ -1125,6 +1158,12 @@ int decode_lw      (MIPS *m, uint32_t ir)
 int decode_lwu     (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
+    
+    if ( a & 3 )
+    {
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
     
     int stat;
     
@@ -1186,6 +1225,12 @@ int decode_sh      (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
     
+    if ( a & 1 )
+    {
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
+    
     int stat;
     mips_write_h(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFF, &stat);
     
@@ -1195,6 +1240,12 @@ int decode_sh      (MIPS *m, uint32_t ir)
 int decode_sw      (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
+    
+    if ( a & 3 )
+    {
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
     
     int stat;
     mips_write_w(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFFFFFF, &stat);

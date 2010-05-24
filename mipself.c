@@ -106,6 +106,14 @@ int place_sections(ELF_File *elf)
     return 0;
 }
 
+/*!
+    \brief Load an executable from a ELF file into a simulated machine
+    \param m target machine
+    \param f ELF file
+    
+    Both executable and relocatable ELF files can be loaded, provided they
+    don't have any external dependencies.
+*/
 int mips_load_elf(MIPS *m, ELF_File *f)
 {
     ELF32_Word sz = 0;
@@ -140,7 +148,9 @@ int mips_load_elf(MIPS *m, ELF_File *f)
             mipsim_printf(IO_DEBUG, "Loading segment %i : [%08x-%08x]\n",
                           i, s->p_vaddr, s->p_vaddr + s->p_memsz);
             
-            if ( m->mem.map_rw(&m->mem, s->p_vaddr, s->p_memsz, s->p_data) )
+            int flags = MEM_RWX;
+            
+            if ( m->mem.map_static(&m->mem, s->p_vaddr, s->p_memsz, s->p_data, flags) )
             {
                 mipsim_printf(IO_WARNING, "Failed mapping program segment in simulator memory\n");
                 return 1;
@@ -153,18 +163,21 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         // default GCC/newlib memory layout
         
         // Stack space : 0x7fff8000-0x80000000
-        m->mem.map_alloc(&m->mem, 0x7fff8000, 0x8000);
+        // TODO : alloc on demand
+        m->mem.map_alloc(&m->mem, 0x7fff8000, 0x8000, MEM_RW);
         
         // Some memory space apparently needed by newlib CRT or IDT monitor...
         // knowledge obtained after digging gdb sources to determine the reason
         // of a puzzling simulation mismatch...
         // TODO : allow tweaking the size of this region
-        m->mem.map_alloc(&m->mem, 0x80000000, 0x00800000);
+        // TODO : alloc on demand
+        m->mem.map_alloc(&m->mem, 0x80000000, 0x00800000, MEM_RW);
         
         // alloc data beyond bss for dynamic data
+        // TODO : alloc on-demand
         if ( sz < cfg->phys_memory_size )
         {
-            m->mem.map_alloc(&m->mem, last, cfg->phys_memory_size - sz);
+            m->mem.map_alloc(&m->mem, last, cfg->phys_memory_size - sz, MEM_RW);
         } else {
             mipsim_printf(IO_WARNING, "Program occupies all physical memory : no space left for dyn data\n");
         }
@@ -213,7 +226,13 @@ int mips_load_elf(MIPS *m, ELF_File *f)
             mipsim_printf(IO_DEBUG, "Loading section %i : [%08x-%08x]\n",
                           i, s->s_addr, s->s_addr + s->s_size);
             
-            if ( m->mem.map_rw(&m->mem, s->s_addr, s->s_size, s->s_data) )
+            int flags = 0;
+            if ( !(s->s_flags & SHF_WRITE) )
+                flags |= MEM_READONLY;
+            if ( !(s->s_flags & SHF_EXECINSTR) )
+                flags |= MEM_NOEXEC;
+            
+            if ( m->mem.map_static(&m->mem, s->s_addr, s->s_size, s->s_data, flags) )
             {
                 mipsim_printf(IO_WARNING, "Failed mapping program segment in simulator memory\n");
                 return 1;
@@ -222,12 +241,13 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         
         // allocate remaining space between static data and first invalid address (used for both
         // stack and dynamic data)
+        // TODO : alloc on demand
         ELF32_Addr dla = section_addr_end[1] == 0xFFFFFFFF ? section_addr_end[0] : section_addr_end[1];
         ELF32_Addr la = dla + (cfg->phys_memory_size - sz);
         
         if ( cfg->phys_memory_size > sz )
         {
-            m->mem.map_alloc(&m->mem, dla, cfg->phys_memory_size - sz);
+            m->mem.map_alloc(&m->mem, dla, cfg->phys_memory_size - sz, MEM_RW);
         } else {
             mipsim_printf(IO_WARNING, "Program occupies all physical memory : no space left for dyn data\n");
         }
