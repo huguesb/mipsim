@@ -17,9 +17,13 @@ compiler should do.
 
 Instead of a handwritten Makefile, a qmake project file is provided.
 
-Build is as simple as :
+Building is as simple as :
 
 $ qmake && make
+
+Please note that GNU readline is required to build MIPSim. This library is
+available by default on most *Nixes but might be more difficult to obtain
+under Windows...
 
 
 Usage
@@ -28,10 +32,14 @@ Usage
 simips [options] program
 
 Options :
-  -t addr    : specify base address of text section (to load relocatable binaries)
-  -d addr    : specify base address of data section (to load relocatable binaries)
-  --debug    : enable debug output
-  --version  : 
+  -t addr            : specify base address of text section (for relocation)
+  -d addr            : specify base address of data section (for relocation)
+  -s size            : specify maximum amount of memory available to simulator
+  --debug            : enable debug output
+  --debug-log file   : specify file in which to redirect debug output
+  --trace            : enable trace output (can be toggled on off in shell)
+  --trace-log file   : specify file in which to redirect trace output
+  --version          : display version and exit
 
 
 Documentation
@@ -42,14 +50,156 @@ You can obtain API docs using Doxygen
 $ doxygen
 
 
+Shell
+-----
+
+MIPSim basic interface is a GDB-like shell supporting the command set described
+below. Parameters in angle bracket are mandatory, parameters in square brackets
+are optional.
+
+* load <filepath>
+--------------------------------------------------------------------------------
+ Short-hand : l
+ 
+ Loads an ELF binary (executable or relocatable) and map it into the memory of
+ the simulated  machine. PC is moved to the entry point or, if none exists, to
+ the start of the .text section.
+ 
+ Note : binaries MAY NOT contain references to external symbols.
+
+
+* run [address]
+--------------------------------------------------------------------------------
+ Short-hand : r
+ GDB equiv  : continue/jump
+ 
+ Resume the execution of the simulated machine from the supplied address (from
+ the current  value of the PC by default)
+ 
+ 
+* quit
+--------------------------------------------------------------------------------
+ Short-hand : q
+ Alias      : exit
+ GDB equiv  : quit
+ 
+ Quit MIPSim
+ 
+ 
+* help [command]
+--------------------------------------------------------------------------------
+ Short-hand : h
+ GDB equiv  : help
+ 
+ Display a list of supported commands if no parameter passed. Display command
+ specific help  when given a parameter.
+
+
+* step [count]
+--------------------------------------------------------------------------------
+ Short-hand : s
+ GDB equiv  : nexti
+ 
+ Executes [count] instructions (default is 1). A branch and its delay slot are
+ considered as a  single instruction.
+ 
+ A procedure call and all the subsequent instructions until procedure return are
+ considered as  a single instruction
+ 
+
+* stepi [count]
+--------------------------------------------------------------------------------
+ Short-hand : si
+ GDB equiv  : stepi
+ 
+ Executes [count] instructions (default is 1). A branch and its delay slot are
+ considered as a
+ single instruction.
+ 
+ 
+* dump
+--------------------------------------------------------------------------------
+ Short-hand : d
+ GDB equiv  : info registers
+ 
+ Dump informations about all processor registers.
+ 
+ 
+* trace [1 | 0]
+--------------------------------------------------------------------------------
+ Short-hand : t
+ 
+ Toggle trace output.
+ 
+ 
+* dasm [start] [end]
+--------------------------------------------------------------------------------
+
+ Disassemble memory. Non-executable memory will be disassembled as .word
+ directives.
+ 
+ If no start parameter is provided the whole .text section will be disasembled.
+ If only the start parameter is provided, end will default to start (only one
+ instruction will  be shown).
+ 
+ 
+* dreg [reg]
+--------------------------------------------------------------------------------
+
+ Display the content of a register. The parameter can be either a register number
+ or a mnemonic, with or without a $ prefix. Using mnemonic one can also access
+ the contents PC, HI, LO and coprocessor registers.
+
+ 
+* sreg <reg> <value>
+--------------------------------------------------------------------------------
+
+ Set the content of a register. First parameter can be either a register number
+ or a mnemonic, with or without a $ prefix. Using mnemonic one can also access
+ the contents PC, HI, LO and coprocessor registers.
+
+ 
+* dmem <start> [end]
+--------------------------------------------------------------------------------
+
+ Display the content of memory region delimited by start and end parameters. If
+ not provided, end default to start + 3*16
+
+
+* smem <address> <value> [bytecount]
+--------------------------------------------------------------------------------
+
+ Set the content of a memory cell. If value is larger than a byte, a valid
+ bytecount parameter must be provided. Bytecount can be either 1, 2 or 4.
+
+ 
+* addbp <start> [end] [mask] [type]
+--------------------------------------------------------------------------------
+
+
+* rmbp [id]
+--------------------------------------------------------------------------------
+
+ 
+* dbp [id]
+--------------------------------------------------------------------------------
+
+
+ 
+
 Limitations
 -----------
 
 MIPSim can only run valid ELF32 binaries targeted to the MIPS I-IV architecture.
+Additionally binaries must not have any reference to external symbols (i.e, no
+shared libs...)
 
 Such binaries can be obtained via a cross-compiler toolchain (e.g GCC build for
 mips-elf target)
 
-MIPSim does not emulate a MIPS pipeline and is not particularly accurate in terms
-of instruction / memory timings : it just goes through the opcodes as fast as it
+MIPSim does not emulate a MIPS pipeline and is not very accurate in terms of
+instruction / memory timings : it just goes through the opcodes as fast as it
 can without any effort to "harmonize" the time spent on each opcode...
+
+MIPSim does not emulate any peripheral. Minimal I/O is supported via a few
+syscalls and a hackish emulation of IDT/PMON monitors.
