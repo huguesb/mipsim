@@ -508,7 +508,7 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
                 break;
                 
             case 'a' :
-                sprintf(disasm_buffer + j, "0x%08x", ((pc + 4) & (-1 << 28)) | (addr << 2));
+                sprintf(disasm_buffer + j, "0x%08x", (pc & (-1 << 28)) | (addr << 2));
                 j += 10;
                 break;
                 
@@ -627,7 +627,7 @@ char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_dat
                 } else if ( *args == 'i' ) {
                     dn = num_to_str(imm, 16 | C_PREFIX);
                 } else if ( *args == 'p' ) {
-                    MIPS_Addr tg = ((int16_t)imm << 2) + (uint32_t)a;
+                    MIPS_Addr tg = ((int16_t)imm << 2) + (uint32_t)(a + 4);
                     
                     if ( sym_name != NULL )
                         cn = sym_name(a, tg, sym_data);
@@ -682,6 +682,34 @@ char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_dat
 
 /*!
     \internal
+    \brief Check for breakpoint hit
+    
+*/
+int mips_breakpoint_test(MIPS *m, MIPS_Addr val, int type)
+{
+    BreakpointList *l = m->breakpoints;
+    
+    while ( l != NULL )
+    {
+        if ( !(l->d.type & BKPT_DISABLED)
+            && ((l->d.type & BKPT_TYPE_MASK) & type)
+            && (l->d.start <= (val & l->d.mask))
+            && (l->d.end   >= (val & l->d.mask))
+            )
+        {
+            m->breakpoint_hit = l->d.id;
+            mips_stop(m, MIPS_BKPT);
+            return MIPS_BKPT;
+        }
+        
+        l = l->next;
+    }
+    
+    return MIPS_OK;
+}
+
+/*!
+    \internal
     \brief core of instr decode/execution
     \param m simulated machine
     \return stop reason
@@ -698,8 +726,6 @@ int mips_universal_decode(MIPS *m)
         mips_stop(m, MIPS_EXCEPTION);
         return MIPS_EXCEPTION;
     }
-    
-    // TODO Check for MEM_READ and MEM_EXEC breakpoints here
     
     int stat;
     uint32_t ir = m->hw.fetch(&m->hw, &stat);
@@ -748,6 +774,20 @@ int mips_universal_decode(MIPS *m)
     } else {
         // error handling...
         mipsim_printf(IO_TRACE, "???\n");
+    }
+    
+    // breakpoint hit test at the end, mostly to avoid complications related to delay slots
+    if ( ret == MIPS_OK )
+    {
+        // "standard" breakpoints : mem execute
+        // simulation interrupted BEFORE instruction executed
+        if ( mips_breakpoint_test(m, pc, BKPT_MEM_X) )
+            return MIPS_BKPT;
+        
+        // exotic breakpoints : opcode
+        // simulation interrupted AFTER instruction executed
+        if ( mips_breakpoint_test(m, ir, BKPT_OPCODE) )
+            return MIPS_BKPT;
     }
     
     return ret;
@@ -835,7 +875,7 @@ int decode_j       (MIPS *m, uint32_t ir)
     int ret = delay_slot(m);
     MIPS_Native pc = m->hw.get_pc(&m->hw);
     
-    if ( ret == MIPS_OK )
+    if ( ret == MIPS_OK || ret == MIPS_BKPT )
     {
         // link
         if ( ir & 0x04000000 )
@@ -843,8 +883,6 @@ int decode_j       (MIPS *m, uint32_t ir)
         
         // jump
         m->hw.set_pc(&m->hw, (pc & (-1 << 28)) | ((ir & ADDR_MASK) << 2));
-    } else {
-        mipsim_printf(IO_WARNING, "problem in delay slot @ 0x%08lx : %d\n", pc - 4, ret);
     }
     
     return ret;
@@ -879,18 +917,17 @@ int decode_beq     (MIPS *m, uint32_t ir)
     MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
     MIPS_Native rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
+    int ret = MIPS_OK;
     int cond = (rs == rt ? 0x04000000 : 0) ^ (ir & 0x04000000);
     
     // delay slot
     if ( !(ir & 0x40000000) || cond )
     {
-        int ret = delay_slot(m);
+        ret = delay_slot(m);
         
-        if ( ret != MIPS_OK )
-        {
-            mipsim_printf(IO_WARNING, "problem in delay slot @ 0x%08lx : %d\n", m->hw.get_pc(&m->hw) - 4, ret);
+        if ( !(ret == MIPS_OK || ret == MIPS_BKPT) )
             return ret;
-        }
+        
     } else {
          m->hw.set_pc(&m->hw, m->hw.get_pc(&m->hw) + 4);
     }
@@ -899,25 +936,24 @@ int decode_beq     (MIPS *m, uint32_t ir)
     if ( cond )
         m->hw.set_pc(&m->hw, m->hw.get_pc(&m->hw) + (((int16_t)(ir & IMM_MASK)) << 2) - 4);
     
-    return MIPS_OK;
+    return ret;
 }
 
 int decode_blez     (MIPS *m, uint32_t ir)
 {
     MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
     
+    int ret = MIPS_OK;
     int cond = (rs <= 0 ? 0x04000000 : 0) ^ (ir & 0x04000000);
     
     // delay slot
     if ( !(ir & 0x40000000) || cond )
     {
-        int ret = delay_slot(m);
+        ret = delay_slot(m);
         
-        if ( ret != MIPS_OK )
-        {
-            mipsim_printf(IO_WARNING, "problem in delay slot @ 0x%08lx : %d\n", m->hw.get_pc(&m->hw) - 4, ret);
+        if ( !(ret == MIPS_OK || ret == MIPS_BKPT) )
             return ret;
-        }
+        
     } else {
          m->hw.set_pc(&m->hw, m->hw.get_pc(&m->hw) + 4);
     }
@@ -926,25 +962,24 @@ int decode_blez     (MIPS *m, uint32_t ir)
     if ( cond )
         m->hw.set_pc(&m->hw, m->hw.get_pc(&m->hw) + (((int16_t)(ir & IMM_MASK)) << 2) - 4);
     
-    return MIPS_OK;
+    return ret;
 }
 
 int decode_bltz     (MIPS *m, uint32_t ir)
 {
     MIPS_Native rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
     
+    int ret = MIPS_OK;
     int cond = (rs < 0 ? 0x00010000 : 0) ^ (ir & 0x00010000);
     
     // delay slot
     if ( !(ir & 0x00020000) || cond )
     {
-        int ret = delay_slot(m);
+        ret = delay_slot(m);
         
-        if ( ret != MIPS_OK )
-        {
-            mipsim_printf(IO_WARNING, "problem in delay slot @ 0x%08lx : %d\n", m->hw.get_pc(&m->hw) - 4, ret);
+        if ( !(ret == MIPS_OK || ret == MIPS_BKPT) )
             return ret;
-        }
+        
     } else {
          m->hw.set_pc(&m->hw, m->hw.get_pc(&m->hw) + 4);
     }
@@ -962,7 +997,7 @@ int decode_bltz     (MIPS *m, uint32_t ir)
         m->hw.set_pc(&m->hw, pc + (((int16_t)(ir & IMM_MASK)) << 2) - 4);
     }
     
-    return MIPS_OK;
+    return ret;
 }
 
 int decode_shift   (MIPS *m, uint32_t ir)
@@ -988,7 +1023,7 @@ int decode_jr      (MIPS *m, uint32_t ir)
     // delay slot
     int ret = delay_slot(m);
     
-    if ( ret == MIPS_OK )
+    if ( ret == MIPS_OK || ret == MIPS_BKPT )
     {
         // link
         if ( ir & 0x00000001 )
@@ -996,8 +1031,6 @@ int decode_jr      (MIPS *m, uint32_t ir)
         
         // jump
         m->hw.set_pc(&m->hw, m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) & (-1 << 2));
-    } else {
-        mipsim_printf(IO_WARNING, "problem in delay slot @ 0x%08lx : %d\n", m->hw.get_pc(&m->hw) - 4, ret);
     }
     
     return ret;
@@ -1257,6 +1290,9 @@ int decode_lb      (MIPS *m, uint32_t ir)
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int8_t)mips_read_b(m, a, &stat));
     
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
+        return MIPS_BKPT;
+    
     return MIPS_OK;
 }
 
@@ -1267,6 +1303,9 @@ int decode_lbu     (MIPS *m, uint32_t ir)
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, mips_read_b(m, a, &stat));
+    
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
+        return MIPS_BKPT;
     
     return MIPS_OK;
 }
@@ -1285,6 +1324,9 @@ int decode_lh      (MIPS *m, uint32_t ir)
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int16_t)mips_read_h(m, a, &stat));
     
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
+        return MIPS_BKPT;
+    
     return MIPS_OK;
 }
 
@@ -1301,6 +1343,9 @@ int decode_lhu     (MIPS *m, uint32_t ir)
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, mips_read_h(m, a, &stat));
+    
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
+        return MIPS_BKPT;
     
     return MIPS_OK;
 }
@@ -1319,6 +1364,9 @@ int decode_lw      (MIPS *m, uint32_t ir)
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int32_t)mips_read_w(m, a, &stat));
     
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
+        return MIPS_BKPT;
+    
     return MIPS_OK;
 }
 
@@ -1335,6 +1383,9 @@ int decode_lwu     (MIPS *m, uint32_t ir)
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, mips_read_w(m, a, &stat));
+    
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
+        return MIPS_BKPT;
     
     return MIPS_OK;
 }
@@ -1385,6 +1436,9 @@ int decode_sb      (MIPS *m, uint32_t ir)
     int stat;
     mips_write_b(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFF, &stat);
     
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_W) )
+        return MIPS_BKPT;
+    
     return MIPS_OK;
 }
 
@@ -1401,6 +1455,9 @@ int decode_sh      (MIPS *m, uint32_t ir)
     int stat;
     mips_write_h(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFF, &stat);
     
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_W) )
+        return MIPS_BKPT;
+    
     return MIPS_OK;
 }
 
@@ -1416,6 +1473,9 @@ int decode_sw      (MIPS *m, uint32_t ir)
     
     int stat;
     mips_write_w(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFFFFFF, &stat);
+    
+    if ( mips_breakpoint_test(m, a, BKPT_MEM_W) )
+        return MIPS_BKPT;
     
     return MIPS_OK;
 }

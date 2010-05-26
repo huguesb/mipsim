@@ -156,6 +156,10 @@ void print_status(MIPS *m)
             printf("Break\n");
             break;
             
+        case MIPS_BKPT :
+            printf("Hit breakpoint %d\n", m->breakpoint_hit);
+            break;
+            
         case MIPS_EXCEPTION :
             printf("Exception\n");
             break;
@@ -602,7 +606,7 @@ int shell_addbp(int argc, char **argv, Shell_Env *e)
             return COMMAND_PARAM_TYPE;
         }
         
-        end = argc > 2 ? eval_expr(argv[2], symbol_value, e, &error) : start + 4;
+        end = argc > 2 ? eval_expr(argv[2], symbol_value, e, &error) : start;
         
         if ( error )
         {
@@ -650,6 +654,8 @@ int shell_rmbp(int argc, char **argv, Shell_Env *e)
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
+    
+    
     
     return COMMAND_OK;
 }

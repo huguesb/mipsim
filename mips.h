@@ -189,18 +189,21 @@ enum {
     MIPS_BREAK,
     MIPS_EXCEPTION,
     MIPS_ERROR,
-    MIPS_UNPREDICTABLE
+    MIPS_UNPREDICTABLE,
+    MIPS_BKPT
 };
 
 typedef struct _MIPS MIPS;
 typedef int (*mips_decode)(MIPS *m);
 
 enum {
-    BKPT_NONE,
-    BKPT_MEM_X,
-    BKPT_MEM_R,
-    BKPT_MEM_W,
-    BKPT_OPCODE,
+    BKPT_NONE   = 0,
+    BKPT_MEM_X  = 1,
+    BKPT_MEM_R  = 2,
+    BKPT_MEM_W  = 4,
+    BKPT_OPCODE = 8,
+    
+    BKPT_TYPE_MASK = 0xFFFF,
     
     BKPT_DISABLED = 0x10000
 };
@@ -227,6 +230,7 @@ struct _MIPS {
     int architecture;
     
     int stop_reason;
+    int breakpoint_hit;
     
     BreakpointList *breakpoints;
 };
