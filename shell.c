@@ -317,6 +317,14 @@ int shell_dump(int argc, char **argv, Shell_Env *e)
     return COMMAND_OK;
 }
 
+const char* find_symbol(MIPS_Addr org, MIPS_Addr val, void *d)
+{
+    Shell_Env *e = (Shell_Env*)d;
+    
+    
+    return NULL;
+}
+
 int shell_dasm(int argc, char **argv, Shell_Env *e)
 {
     (void)argc; (void)argv;
@@ -324,6 +332,66 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
+    
+    MIPSIM_Config *cfg = mipsim_config();
+    
+    int error = 0;
+    MIPS_Addr start, end;
+    
+    ELF_Section *s = elf_section(e->f, ".text");
+    
+    if ( s == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    start = s->s_addr ? s->s_addr : s->s_reloc;
+    end = start + s->s_size - 1;
+    
+    if ( argc > 1 )
+    {
+        start = eval_expr(argv[1], symbol_value, e, &error);
+        if ( error )
+        {
+            printf("Invalid <start> parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        end = start;
+        
+        if ( argc == 3 )
+        {
+            end = eval_expr(argv[2], symbol_value, e, &error);
+            if ( error )
+            {
+                printf("Invalid <end> parameter\n");
+                return COMMAND_PARAM_TYPE;
+            }
+        } else {
+            printf("dasm [start] [end]\n");
+        }
+    }
+    
+    if ( end < start )
+    {
+        printf("Invalid parameters\n");
+        return COMMAND_PARAM_TYPE;
+    }
+    
+    MIPS_Addr a = start;
+    
+    while ( a <= end )
+    {
+        char *s = mips_disassemble(m, a, find_symbol, e);
+        
+        if ( s != NULL )
+        {
+            printf("%08x:\t%08x\t%s\n", a, mips_read_w(m, a, NULL), s);
+            free(s);
+        } else {
+            printf("%08x : xxxxxxxx\n");
+        }
+        
+        a += 4;
+    }
     
     return COMMAND_OK;
 }
