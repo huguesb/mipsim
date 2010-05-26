@@ -533,7 +533,7 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
     
     The caller is responsible for freeing the returned string (if non-NULL)
 */
-const char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_data)
+char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_data)
 {
     int stat;
     uint32_t w = m->mem.read_w(&m->mem, a, &stat);

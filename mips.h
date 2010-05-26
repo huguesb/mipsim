@@ -288,6 +288,6 @@ Breakpoint* mips_breakpoint(MIPS *m, int id);
     Disassembly
 */
 typedef const char* (symbol_name)(MIPS_Addr org, MIPS_Addr val, void *d);
-const char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_data);
+char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_data);
 
 #endif

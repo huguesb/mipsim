@@ -321,8 +321,15 @@ const char* find_symbol(MIPS_Addr org, MIPS_Addr val, void *d)
 {
     Shell_Env *e = (Shell_Env*)d;
     
+    // TODO : use relocation information when available to avoid ambiguities ?
     
-    return NULL;
+    MIPS *m = e->m;
+    ELF_File *elf = e->f;
+    
+    int stat;
+    const char *s = elf_symbol_name(elf, val, &stat);
+    
+    return s;
 }
 
 int shell_dasm(int argc, char **argv, Shell_Env *e)
@@ -365,8 +372,9 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
                 printf("Invalid <end> parameter\n");
                 return COMMAND_PARAM_TYPE;
             }
-        } else {
+        } else if ( argc != 2 ) {
             printf("dasm [start] [end]\n");
+            return COMMAND_PARAM_COUNT;
         }
     }
     
@@ -380,6 +388,11 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
     
     while ( a <= end )
     {
+        const char *lbl = elf_symbol_name(e->f, a, NULL);
+        
+        if ( lbl != NULL )
+            printf("\n%s:\n", lbl);
+        
         char *s = mips_disassemble(m, a, find_symbol, e);
         
         if ( s != NULL )
@@ -387,7 +400,7 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
             printf("%08x:\t%08x\t%s\n", a, mips_read_w(m, a, NULL), s);
             free(s);
         } else {
-            printf("%08x : xxxxxxxx\n");
+            printf("%08x : xxxxxxxx\n", a);
         }
         
         a += 4;
