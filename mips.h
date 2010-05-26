@@ -261,6 +261,9 @@ void mips_write_h(MIPS *m, MIPS_Addr a, uint16_t h, int *stat);
 void mips_write_w(MIPS *m, MIPS_Addr a, uint32_t w, int *stat);
 void mips_write_d(MIPS *m, MIPS_Addr a, uint64_t d, int *stat);
 
+/*
+    Breakpoint management
+*/
 enum {
     BKPT_MEM_X,
     BKPT_MEM_R,
@@ -278,6 +281,13 @@ typedef struct _Breakpoint {
 int mips_breakpoint_add(MIPS *m, int type, MIPS_Addr start, MIPS_Addr end, MIPS_Addr mask);
 void mips_breakpoint_remove(MIPS *m, int id);
 
+int mips_breakpoint_count(MIPS *m);
 Breakpoint* mips_breakpoint(MIPS *m, int id);
+
+/*
+    Disassembly
+*/
+typedef const char* (symbol_name)(MIPS_Addr org, MIPS_Addr val, void *d);
+const char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_data);
 
 #endif

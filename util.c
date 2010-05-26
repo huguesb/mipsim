@@ -14,7 +14,8 @@
 
 enum {
     CASE_MASK = ~('a' - 'A'),
-    NUM_ADJUST = -('A' - '0' - 10)
+    NUM_ADJUST = -('A' - '0' - 10),
+    STR_ADJUST = ('A' - 10)
 };
 
 /*!
@@ -33,6 +34,83 @@ uint8_t value(uint8_t c)
     return c;
 }
 
+
+
+/*!
+    \internal
+    \brief auxiliary function for num-> conversion
+*/
+uint8_t character(uint8_t c)
+{
+    return c <= 9 ? c + '0' : c + STR_ADJUST;
+}
+
+void cat_num(uint32_t n, uint8_t base, char *s, uint8_t pad)
+{
+    int sz = pad;
+    
+    do {
+        s[--sz] = character(n % base);
+        n /= base;
+    } while ( n && sz );
+    
+    while ( sz )
+        s[--sz] = '0';
+    
+}
+
+/*!
+    \brief convert an integer to a string
+    \param n number to convert
+    \param base base to use (valid values in 2-36)
+    \return NULL on failure (invalid base), a string representation of the input otherwise
+    
+    The caller is responsible for freeing the returned string.
+*/
+char* num_to_str(uint32_t n, uint8_t base)
+{
+    int flags = base & 0xC0;
+    base &= 63;
+    
+    if ( base < 2 || base > 36 )
+        return NULL;
+    
+    int sz = 1, tmp = n;
+    
+    do {
+        tmp /= base;
+        ++sz;
+    } while ( tmp );
+    
+    if ( flags & C_PREFIX )
+    {
+        if ( base == 8 )
+            ++sz;
+        else if ( base == 16 )
+            sz += 2;
+    }
+    
+    char *s = malloc(sz * sizeof(char));
+    s[--sz] = 0;
+    
+    do {
+        s[--sz] = character(n % base);
+        n /= base;
+    } while ( n );
+    
+    if ( flags & C_PREFIX )
+    {
+        if ( base == 8 )
+            s[0] = '0';
+        else if ( base == 16 ) {
+            s[0] = '0';
+            s[1] = 'x';
+        }
+    }
+    
+    return s;
+}
+
 /*!
     \brief convert a string to an integer, with error checks
     \param s string to convert
@@ -45,7 +123,7 @@ uint8_t value(uint8_t c)
     The input string can be in either octal, decimal or hexadecimal
     format, with proper C prefixes.
 */
-uint32_t str_2_num(const char *s, const char **end, int *error)
+uint32_t str_to_num(const char *s, const char **end, int *error)
 {
     uint32_t base = 10;
     
@@ -138,5 +216,5 @@ uint32_t eval_expr(const char *s, _symbol_value eval_sym, void *d, int *error)
     
     
     
-    return str_2_num(s, NULL, error);
+    return str_to_num(s, NULL, error);
 }

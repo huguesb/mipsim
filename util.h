@@ -30,7 +30,15 @@ static inline int32_t u32_to_s32(uint32_t v)
 static inline int bit_fit(uint32_t v, int bits)
 { return bits > 0 ? (bits < 32 ? (v >> bits ? 0 : 1) : 1) : 0;}
 
-uint32_t str_2_num(const char *s, const char **end, int *error);
+enum {
+    C_NONE   = 0,
+    C_PAD    = 64,
+    C_PREFIX = 128
+};
+
+void cat_num(uint32_t n, uint8_t base, char *s, uint8_t pad);
+char* num_to_str(uint32_t n, uint8_t base);
+uint32_t str_to_num(const char *s, const char **end, int *error);
 
 typedef uint32_t (*_symbol_value)(const char *n, void *d, int *error);
 

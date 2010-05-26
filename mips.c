@@ -61,11 +61,32 @@ static const char *mips_spr_names[3] = {
     "pc", "hi", "lo"
 };
 
+static const char *mips_cp0_names[32] = {
+    "c0_index", "c0_random", "c0_entrylo", "c0_r3",  "c0_context", "c0_r5",    "c0_r6",  "c0_r7",
+    "c0_vaddr", "c0_r9",     "c0_entryhi", "c0_r11", "c0_status",  "c0_cause", "c0_epc", "c0_r15",
+    "c0_r16",   "c0_r17",    "c0_r18",     "c0_r19", "c0_r20",     "c0_r21",   "c0_r22", "c0_r23",
+    "c0_r24",   "c0_r25",    "c0_r26",     "c0_r27", "c0_r28",     "c0_r29",   "c0_r30", "c0_r31"
+};
+
 static const char *mips_fpr_names[32] = {
     "fp0",  "fp1",  "fp2",  "fp3",  "fp4",  "fp5",  "fp6",  "fp7",
     "fp8",  "fp9",  "fp10", "fp11", "fp12", "fp13", "fp14", "fp15",
     "fp16", "fp17", "fp18", "fp19", "fp20", "fp21", "fp22", "fp23",
     "fp24", "fp25", "fp26", "fp27", "fp28", "fp29", "fp30", "fp31"
+};
+
+static const char *mips_cp2_names[32] = {
+    "c2_r0",  "c2_r1",  "c2_r2",  "c2_r3",  "c2_r4",  "c2_r5",  "c2_r6",  "c2_r7",
+    "c2_r8",  "c2_r9",  "c2_r3",  "c2_r11", "c2_r12", "c2_r13", "c2_r14", "c2_r15",
+    "c2_r16", "c2_r17", "c2_r18", "c2_r19", "c2_r20", "c2_r21", "c2_r22", "c2_r23",
+    "c2_r24", "c2_r25", "c2_r26", "c2_r27", "c2_r28", "c2_r29", "c2_r30", "c2_r31"
+};
+
+static const char *mips_cp3_names[32] = {
+    "c3_r0",  "c3_r1",  "c3_r2",  "c3_r3",  "c3_r4",  "c3_r5",  "c3_r6",  "c3_r7",
+    "c3_r8",  "c3_r9",  "c3_r3",  "c3_r11", "c3_r12", "c3_r13", "c3_r14", "c3_r15",
+    "c3_r16", "c3_r17", "c3_r18", "c3_r19", "c3_r20", "c3_r21", "c3_r22", "c3_r23",
+    "c3_r24", "c3_r25", "c3_r26", "c3_r27", "c3_r28", "c3_r29", "c3_r30", "c3_r31"
 };
 
 /*!
@@ -84,7 +105,7 @@ int mips_reg_id(const char *name)
         // simple atoi from reg number
         
         int error;
-        int id = str_2_num(name, NULL, &error);
+        int id = str_to_num(name, NULL, &error);
         
         if ( !error )
             return id;
@@ -123,13 +144,13 @@ const char* mips_reg_name(int reg)
     else if ( flags == SPR )
         return reg < 3 ? mips_spr_names[reg] : NULL;
     else if ( flags == CP0 )
-        return reg < 32 ? mips_default_reg_names[reg] : NULL;
+        return reg < 32 ? mips_cp0_names[reg] : NULL;
     else if ( flags == CP1 )
         return reg < 32 ? mips_fpr_names[reg] : NULL;
     else if ( flags == CP2 )
-        return reg < 32 ? mips_default_reg_names[reg] : NULL;
+        return reg < 32 ? mips_cp2_names[reg] : NULL;
     else if ( flags == CP3 )
-        return reg < 32 ? mips_default_reg_names[reg] : NULL;
+        return reg < 32 ? mips_cp3_names[reg] : NULL;
     
     return NULL;
 }

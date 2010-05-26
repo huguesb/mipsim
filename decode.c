@@ -521,6 +521,173 @@ const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
     return disasm_buffer;
 }
 
+/*!
+    \brief Disassemble four bytes of memory
+    \param m simulated machine
+    \param a address of memory to disassemble
+    \param sym_name symbol naming callback
+    \param sym_data symbol naming data (to be fed to callback)
+    \return Mnemonic
+    
+    A null pointer will be returned if the memory is unreachable.
+    
+    The caller is responsible for freeing the returned string (if non-NULL)
+*/
+const char* mips_disassemble(MIPS *m, MIPS_Addr a, symbol_name sym_name, void *sym_data)
+{
+    int stat;
+    uint32_t w = m->mem.read_w(&m->mem, a, &stat);
+    
+    if ( stat == MEM_UNMAPPED )
+        return NULL;
+    
+    char *s = NULL;
+    int cp = 0;
+    
+    if ( stat & MEM_NOEXEC )
+    {
+        s = malloc(17 * sizeof(char));
+        s[0] = '.';
+        s[1] = 'w';
+        s[2] = 'o';
+        s[3] = 'r';
+        s[4] = 'd';
+        s[5] = ' ';
+        s[6] = '0';
+        s[7] = 'x';
+        
+        cat_num(w, 16, s + 8, 8);
+        
+        s[16] = '\0';
+    } else {
+        MIPS_Instr i = opcodes[(w & OPCODE_MASK) >> OPCODE_SHIFT];
+        
+        if ( i.mnemonic == NULL && i.decode != NULL )
+        {
+            if ( i.decode == decode_special )
+                i = Rinstr[w & FN_MASK];
+            else if ( i.decode == decode_special2 )
+                i = Rinstr2[w & FN_MASK];
+            else if ( i.decode == decode_regimm )
+                i = Iinstr[(w & RT_MASK) >> RT_SHIFT];
+            else if ( i.decode == decode_cp0 ) {
+                cp = CP0;
+                i = cp0[(w & FMT_MASK) >> FMT_SHIFT];
+            } else if ( i.decode == decode_cp1 ) {
+                cp = CP1;
+                i = cp1[(w & FMT_MASK) >> FMT_SHIFT];
+                // TODO : extra step for actual functions...
+            } else if ( i.decode == decode_cp2 ) {
+                cp = CP2;
+                i = cp2[(w & FMT_MASK) >> FMT_SHIFT];
+            }
+        }
+        
+        if ( i.mnemonic != NULL && i.args != NULL )
+        {
+            const uint8_t sh = (w & SH_MASK) >> SH_SHIFT;
+            const uint8_t rd = (w & RD_MASK) >> RD_SHIFT;
+            const uint8_t rt = (w & RT_MASK) >> RT_SHIFT;
+            const uint8_t rs = (w & RS_MASK) >> RS_SHIFT;
+            const uint16_t imm = (w & IMM_MASK);
+            const uint32_t addr = (w & ADDR_MASK);
+            const uint8_t fd = (w & FD_MASK) >> FD_SHIFT;
+            const uint8_t fs = (w & FS_MASK) >> FS_SHIFT;
+    
+            //i.mnemonic, mips_disasm(i.args, pc, ir)
+            int sz = strlen(i.mnemonic), alloc = sz + 8 * strlen(i.args);
+            s = malloc(alloc * sizeof(char));
+            
+            strcpy(s, i.mnemonic);
+            s[sz] = '\t';
+            s[++sz] = '\0';
+            
+            const char *args = i.args;
+            
+            while ( *args )
+            {
+                const char *cn = NULL;
+                char *dn = NULL;
+                
+                if ( *args == 's' )
+                {
+                    cn = mips_reg_name(rs);
+                } else if ( *args == 't' ) {
+                    cn = mips_reg_name(rt);
+                } else if ( *args == 'd' ) {
+                    cn = mips_reg_name(rd);
+                } else if ( *args == 'S' ) {
+                    cn = mips_reg_name(fs | cp);
+                } else if ( *args == 'T' ) {
+                    cn = mips_reg_name(rt | cp);
+                } else if ( *args == 'D' ) {
+                    cn = mips_reg_name(fd | cp);
+                } else if ( *args == '<' ) {
+                    dn = num_to_str(sh, 10);
+                } else if ( *args == 'i' ) {
+                    dn = num_to_str(imm, 16 | C_PREFIX);
+                } else if ( *args == 'p' ) {
+                    MIPS_Addr tg = ((int16_t)imm << 2) + (uint32_t)a;
+                    
+                    if ( sym_name != NULL )
+                        cn = sym_name(a, tg, sym_data);
+                    
+                    if ( cn == NULL )
+                        dn = num_to_str(tg, 16 | C_PREFIX);
+                } else if ( *args == 'a' ) {
+                    MIPS_Addr tg = ((a + 4) & (-1 << 28)) | (addr << 2);
+                    
+                    if ( sym_name != NULL )
+                        cn = sym_name(a, tg, sym_data);
+                    
+                    if ( cn == NULL )
+                        dn = num_to_str(tg, 16 | C_PREFIX);
+                } else {
+                    if ( sz + 1 == alloc )
+                    {
+                        alloc *= 2;
+                        s = realloc(s, alloc);
+                    }
+                    s[sz++] = *args;
+                    s[sz] = '\0';
+                }
+                
+                if ( dn != NULL )
+                {
+                    sz += strlen(dn);
+                    if ( sz >= alloc )
+                    {
+                        alloc *= 2;
+                        s = realloc(s, alloc);
+                    }
+                    strcat(s, dn);
+                    free(dn);
+                } else if ( cn != NULL ) {
+                    sz += strlen(cn);
+                    if ( sz >= alloc )
+                    {
+                        alloc *= 2;
+                        s = realloc(s, alloc);
+                    }
+                    strcat(s, cn);
+                }
+                
+                ++args;
+            }
+        }
+    }
+    
+    return s;
+}
+
+/*!
+    \internal
+    \brief core of instr decode/execution
+    \param m simulated machine
+    \return stop reason
+    
+    Fetch the instruction at PC, increase PC and execute the instruction
+*/
 int mips_universal_decode(MIPS *m)
 {
     MIPS_Native pc = m->hw.get_pc(&m->hw);
