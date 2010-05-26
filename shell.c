@@ -655,7 +655,24 @@ int shell_rmbp(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
-    
+    if ( argc == 1 )
+    {
+        mips_breakpoint_clear(m);
+    } else if ( argc == 2 ) {
+        int error;
+        int id = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid [id] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        mips_breakpoint_remove(m, id);
+    } else {
+        printf("rmbp [id]\n");
+        return COMMAND_PARAM_COUNT;
+    }
     
     return COMMAND_OK;
 }

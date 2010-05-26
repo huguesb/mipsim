@@ -448,8 +448,32 @@ void mips_breakpoint_remove(MIPS *m, int id)
             break;
         }
         
+        prev = bkpt;
         bkpt = bkpt->next;
     }
+}
+
+/*!
+    \internal
+    \brief Recursively deletes the content of a linked list of breakpoints
+*/
+void mips_breakpoint_list_delete(BreakpointList *l)
+{
+    if ( l != NULL )
+    {
+        mips_breakpoint_list_delete(l->next);
+        free(l);
+    }
+}
+
+/*!
+    \brief Remove all breakpoints attached to a simulated machine
+    \param m simulated machine
+*/
+void mips_breakpoint_clear(MIPS *m)
+{
+    mips_breakpoint_list_delete(m->breakpoints);
+    m->breakpoints = NULL;
 }
 
 /*!

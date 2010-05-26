@@ -295,6 +295,8 @@ void mips_write_d(MIPS *m, MIPS_Addr a, uint64_t d, int *stat);
 int mips_breakpoint_add(MIPS *m, int type, MIPS_Addr start, MIPS_Addr end, MIPS_Addr mask);
 void mips_breakpoint_remove(MIPS *m, int id);
 
+void mips_breakpoint_clear(MIPS *m);
+
 int mips_breakpoint_count(MIPS *m, int type);
 Breakpoint* mips_breakpoint(MIPS *m, int id);
 
