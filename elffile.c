@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "io.h"
 
@@ -1137,4 +1138,54 @@ int elf_file_relocate(ELF_File *elf)
     }
     
     return 0;
+}
+
+/*!
+    \brief Try to find a symbol for a given value
+    \param elf ELF file
+    \param value symbol value
+    \param stat If not null, will hold information about the search result(s)
+*/
+const char* elf_symbol_name(ELF_File *elf, ELF32_Addr value, int *stat)
+{
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
+    {
+        ELF_Section *s = elf->sections[i];
+        
+        if ( s == NULL || s->s_type != SHT_SYMTAB )
+            continue;
+        
+        ELF_Sym *sym = (ELF_Sym*)((void*)s->s_data);
+        const ELF32_Word n = s->s_size / s->s_entsize;
+        
+        for ( ELF32_Word k = 0; k < n; ++k )
+        {
+            ELF32_Addr a = elf_symbol_address(elf, sym + k);
+            
+            if ( a == value )
+            {
+                if ( stat )
+                    *stat = ELF32_ST_TYPE(sym[k].s_info);
+                
+                return elf_string(elf, s->s_link, sym[k].s_name);
+            }
+        }
+    }
+    
+    return NULL;
+}
+
+/*!
+    \brief Section lookup by name
+    \param elf ELF file
+    \param name section name
+    \return pointer to section, NULL if not found
+*/
+ELF_Section* elf_section(ELF_File *elf, const char *name)
+{
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
+        if ( !strcmp(name, elf_section_name(elf, i, NULL)) )
+            return elf->sections[i];
+    
+    return NULL;
 }

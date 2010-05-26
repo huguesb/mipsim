@@ -272,4 +272,8 @@ int elf_file_load(ELF_File *elf, const char *filename);
 
 int elf_file_relocate(ELF_File *elf);
 
+ELF_Section* elf_section(ELF_File *elf, const char *name);
+
+const char* elf_symbol_name(ELF_File *elf, ELF32_Addr value, int *stat);
+
 #endif
