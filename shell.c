@@ -334,8 +334,6 @@ const char* find_symbol(MIPS_Addr org, MIPS_Addr val, void *d)
 
 int shell_dasm(int argc, char **argv, Shell_Env *e)
 {
-    (void)argc; (void)argv;
-    
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
@@ -411,8 +409,6 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
 
 int shell_dreg(int argc, char **argv, Shell_Env *e)
 {
-    (void)argc; (void)argv;
-    
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
@@ -440,8 +436,6 @@ int shell_dreg(int argc, char **argv, Shell_Env *e)
 
 int shell_sreg(int argc, char **argv, Shell_Env *e)
 {
-    (void)argc; (void)argv;
-    
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
@@ -476,8 +470,6 @@ int shell_sreg(int argc, char **argv, Shell_Env *e)
 
 int shell_dmem(int argc, char **argv, Shell_Env *e)
 {
-    (void)argc; (void)argv;
-    
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
@@ -531,8 +523,6 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
 
 int shell_smem(int argc, char **argv, Shell_Env *e)
 {
-    (void)argc; (void)argv;
-    
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
@@ -593,6 +583,102 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
     return COMMAND_OK;
 }
 
+int shell_addbp(int argc, char **argv, Shell_Env *e)
+{
+    MIPS *m = e->m;
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    int error, type;
+    MIPS_Addr start, end, mask;
+    
+    if ( argc >= 2 && argc <= 5 )
+    {
+        start = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid <start> parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        end = argc > 2 ? eval_expr(argv[2], symbol_value, e, &error) : start + 4;
+        
+        if ( error )
+        {
+            printf("Invalid [end] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        mask = argc > 3 ? eval_expr(argv[3], symbol_value, e, &error) : 0xFFFFFFFF;
+        
+        if ( error )
+        {
+            printf("Invalid [mask] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        type = BKPT_MEM_X;
+        
+        if ( argc == 5 )
+        {
+            if ( strcmp(argv[4], "memr") )
+                type = BKPT_MEM_R;
+            else if ( strcmp(argv[4], "memw") )
+                type = BKPT_MEM_W;
+            else if ( strcmp(argv[4], "op") )
+                type = BKPT_OPCODE;
+            else {
+                printf("Invalid [type] parameter : not in {memr, memw, op}\n");
+                return COMMAND_PARAM_TYPE;
+            }
+        }
+    } else {
+        printf("addbp <start> [end] [mask] [type]\n");
+        return COMMAND_PARAM_COUNT;
+    }
+    
+    int id = mips_breakpoint_add(m, type, start, end, mask);
+    
+    printf("added breakpoint %d\n", id);
+    
+    return COMMAND_OK;
+}
+
+int shell_rmbp(int argc, char **argv, Shell_Env *e)
+{
+    MIPS *m = e->m;
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    return COMMAND_OK;
+}
+
+void dbp(BreakpointList *l)
+{
+    if ( l == NULL )
+        return;
+    
+    dbp(l->next);
+    
+    printf("%4d  0x%08x  0x%08x  0x%08x\n", l->d.id, l->d.start, l->d.end, l->d.mask);
+}
+
+int shell_dbp(int argc, char **argv, Shell_Env *e)
+{
+    MIPS *m = e->m;
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    printf("----------------------------------------\n");
+    printf("  ID     start        end        mask   \n");
+    printf("----------------------------------------\n");
+    dbp(m->breakpoints);
+    printf("----------------------------------------\n");
+    
+    return COMMAND_OK;
+}
+
 int shell_help(int argc, char **argv, Shell_Env *e);
 
 static const Command commands[] = {
@@ -616,6 +702,9 @@ static const Command commands[] = {
     {"run",   shell_run, ""},
     {"step",  shell_step, ""},
     {"stepi", shell_stepi, ""},
+    {"addbp", shell_addbp, ""},
+    {"rmbp",  shell_rmbp, ""},
+    {"dbp",   shell_dbp, ""},
     {"dump",  shell_dump, ""},
     {"trace", shell_trace, ""},
     {"quit",  shell_quit, ""},

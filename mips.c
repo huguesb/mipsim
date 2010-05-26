@@ -172,6 +172,8 @@ MIPS* mips_create(int arch)
     m->architecture = arch;
     m->decode = mips_universal_decode;
     
+    m->breakpoints = NULL;
+    
     mips_init_memory(m);
     mips_init_processor(m);
     mips_init_coprocessor(m, 0);
@@ -397,25 +399,94 @@ void mips_write_d(MIPS *m, MIPS_Addr a, uint64_t d, int *stat)
 
 /*!
     \brief Add a breakpoint to a simulated machine
+    \param m simulated machine
+    \param type breakpoint type
+    \param start start of break range
+    \param end end of break range
+    \param mask break range mask
+    \return breakpoint id
+    
+    Breakpoint will cause simulation interruption if the value V being considered verifies :
+    
+    start <= (V & mask) <= end
+    
+    Where the value V can be a memory address or an opcode, depending on the breakpoint type.
 */
 int mips_breakpoint_add(MIPS *m, int type, MIPS_Addr start, MIPS_Addr end, MIPS_Addr mask)
 {
+    BreakpointList *l = malloc(sizeof(BreakpointList));
+    l->d.id    = m->breakpoints != NULL ? m->breakpoints->d.id + 1 : 0;
+    l->d.type  = type;
+    l->d.start = start;
+    l->d.end   = end;
+    l->d.mask  = mask;
+    l->next    = m->breakpoints;
+    m->breakpoints = l;
     
-    return 0;
+    return l->d.id;
 }
 
 /*!
     \brief Remove a breakpoint from a simulated machine
+    \param m simulated machine
+    \param id breakpoint id, as returned by mips_breakpoint_add
 */
 void mips_breakpoint_remove(MIPS *m, int id)
 {
+    BreakpointList *prev = NULL, *bkpt = m->breakpoints;
     
+    while ( bkpt != NULL )
+    {
+        if ( bkpt->d.id == id )
+        {
+            if ( prev != NULL )
+                prev->next = bkpt->next;
+            else
+                m->breakpoints = bkpt->next;
+            
+            free(bkpt);
+            break;
+        }
+        
+        bkpt = bkpt->next;
+    }
+}
+
+/*!
+    \brief Count breakpoints
+*/
+int mips_breakpoint_count(MIPS *m, int type)
+{
+    int n = 0;
+    BreakpointList *bkpt = m->breakpoints;
+    
+    while ( bkpt != NULL )
+    {
+        ++n;
+        bkpt = bkpt->next;
+    }
+    
+    return n;
 }
 
 /*!
     \brief Access breakpoint data
+    \param m simulated machine
+    \param id breakpoint id, as returned by mips_breakpoint_add
+    
+    Any changes to the values of this structure will be taken into account for future breakpoint tests
 */
 Breakpoint* mips_breakpoint(MIPS *m, int id)
 {
+    BreakpointList *bkpt = m->breakpoints;
+    
+    while ( bkpt != NULL )
+    {
+        if ( bkpt->d.id == id )
+            return &bkpt->d;
+        
+        bkpt = bkpt->next;
+    }
+    
     return NULL;
 }

@@ -195,6 +195,28 @@ enum {
 typedef struct _MIPS MIPS;
 typedef int (*mips_decode)(MIPS *m);
 
+enum {
+    BKPT_NONE,
+    BKPT_MEM_X,
+    BKPT_MEM_R,
+    BKPT_MEM_W,
+    BKPT_OPCODE,
+    
+    BKPT_DISABLED = 0x10000
+};
+
+typedef struct _Breakpoint {
+    int id, type;
+    MIPS_Addr start, end, mask;
+} Breakpoint;
+
+typedef struct _BreakpointList BreakpointList;
+
+struct _BreakpointList {
+    Breakpoint d;
+    BreakpointList *next;
+};
+
 struct _MIPS {
     MIPS_Memory mem;
     MIPS_Processor hw;
@@ -205,6 +227,8 @@ struct _MIPS {
     int architecture;
     
     int stop_reason;
+    
+    BreakpointList *breakpoints;
 };
 
 enum MIPS_Architecture {
@@ -264,24 +288,10 @@ void mips_write_d(MIPS *m, MIPS_Addr a, uint64_t d, int *stat);
 /*
     Breakpoint management
 */
-enum {
-    BKPT_MEM_X,
-    BKPT_MEM_R,
-    BKPT_MEM_W,
-    BKPT_OPCODE,
-    
-    BKPT_DISABLED = 0x10000
-};
-
-typedef struct _Breakpoint {
-    int type;
-    MIPS_Addr start, end, mask;
-} Breakpoint;
-
 int mips_breakpoint_add(MIPS *m, int type, MIPS_Addr start, MIPS_Addr end, MIPS_Addr mask);
 void mips_breakpoint_remove(MIPS *m, int id);
 
-int mips_breakpoint_count(MIPS *m);
+int mips_breakpoint_count(MIPS *m, int type);
 Breakpoint* mips_breakpoint(MIPS *m, int id);
 
 /*
