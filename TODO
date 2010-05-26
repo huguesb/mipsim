@@ -1,13 +1,11 @@
 
 TODO :
  * document everything
- * use a binary tree for memory mappings
- * relocation
- * per-section propagation of WX attributes to memory map
- * implement the minimum set of shell commands
+ * use a binary tree for memory mappings ?
+ * on demand allocation
+ * field-test used memory by C programs
  
  * Coprocessor support
-    - move data to/from coprocs [x]
     - model somewhat accurately control regs of cp1 (and cp0 ???)
     - exception handling
     - FPU
@@ -17,21 +15,13 @@ TODO :
  * MIPS 32/64 R2 ISA
     - instructions decode
  * Better monitor / IO decoupling
- * Better ELF file loading :
-    - map memory on a section basis and honor WX flags
-    - support relocatable binaries (do the relocation)
- * shell
-    - compatible with command set from spec
  * debugger
-    - breakpoints
     - watchpoints
-    - read symbols from ELF .symtab to prettify disassembly
     - read debugging informations from ELF sections?
  * automated tester
     - proper parsing of CLI arguments
     - more tweaking via CLI
+    - make it manage properly target I/O
  * tests
     - some assembly code (teachers probably expect that...)
     - more complex C code
-    - more advanced I/O ??? (mem-mapped peripherals? simulate driver(s) via file descriptors?)
- * GUI demonstrating the neat compartimentation of IO contexts?
