@@ -1290,6 +1290,13 @@ int decode_lb      (MIPS *m, uint32_t ir)
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int8_t)mips_read_b(m, a, &stat));
     
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
+    
     if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
         return MIPS_BKPT;
     
@@ -1303,6 +1310,13 @@ int decode_lbu     (MIPS *m, uint32_t ir)
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, mips_read_b(m, a, &stat));
+    
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
     
     if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
         return MIPS_BKPT;
@@ -1324,6 +1338,13 @@ int decode_lh      (MIPS *m, uint32_t ir)
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int16_t)mips_read_h(m, a, &stat));
     
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
+    
     if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
         return MIPS_BKPT;
     
@@ -1343,6 +1364,13 @@ int decode_lhu     (MIPS *m, uint32_t ir)
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, mips_read_h(m, a, &stat));
+    
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
     
     if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
         return MIPS_BKPT;
@@ -1364,6 +1392,13 @@ int decode_lw      (MIPS *m, uint32_t ir)
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, (int32_t)mips_read_w(m, a, &stat));
     
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
+    
     if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
         return MIPS_BKPT;
     
@@ -1383,6 +1418,13 @@ int decode_lwu     (MIPS *m, uint32_t ir)
     int stat;
     
     m->hw.set_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT, mips_read_w(m, a, &stat));
+    
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
     
     if ( mips_breakpoint_test(m, a, BKPT_MEM_R) )
         return MIPS_BKPT;
@@ -1428,13 +1470,26 @@ int decode_ldr     (MIPS *m, uint32_t ir)
     return MIPS_UNSUPPORTED;
 }
 
-
 int decode_sb      (MIPS *m, uint32_t ir)
 {
     MIPS_Addr a = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT) + (int16_t)(ir & IMM_MASK);
     
     int stat;
     mips_write_b(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFF, &stat);
+    
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
+    
+    if ( stat & MEM_READONLY )
+    {
+        mipsim_printf(IO_WARNING, "Memory mapped @ %08x is ReadOnly\n", a);
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
     
     if ( mips_breakpoint_test(m, a, BKPT_MEM_W) )
         return MIPS_BKPT;
@@ -1455,6 +1510,20 @@ int decode_sh      (MIPS *m, uint32_t ir)
     int stat;
     mips_write_h(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFF, &stat);
     
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
+    
+    if ( stat & MEM_READONLY )
+    {
+        mipsim_printf(IO_WARNING, "Memory mapped @ %08x is ReadOnly\n", a);
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
+    
     if ( mips_breakpoint_test(m, a, BKPT_MEM_W) )
         return MIPS_BKPT;
     
@@ -1473,6 +1542,20 @@ int decode_sw      (MIPS *m, uint32_t ir)
     
     int stat;
     mips_write_w(m, a, m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT) & 0xFFFFFFFF, &stat);
+    
+    if ( stat == MEM_UNMAPPED )
+    {
+        mipsim_printf(IO_WARNING, "No memory mapped @ %08x\n", a);
+        mips_stop(m, MIPS_ERROR);
+        return MIPS_ERROR;
+    }
+    
+    if ( stat & MEM_READONLY )
+    {
+        mipsim_printf(IO_WARNING, "Memory mapped @ %08x is ReadOnly\n", a);
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    }
     
     if ( mips_breakpoint_test(m, a, BKPT_MEM_W) )
         return MIPS_BKPT;
@@ -1539,8 +1622,6 @@ int decode_trap    (MIPS *m, uint32_t ir)
 
 int decode_cp0     (MIPS *m, uint32_t ir)
 {
-    (void)m; (void)ir;
-    /*
     MIPS_Instr i = cp0[(ir & FMT_MASK) >> FMT_SHIFT];
     
     if ( i.decode )
@@ -1559,9 +1640,6 @@ int decode_cp0     (MIPS *m, uint32_t ir)
     } else {
         mipsim_printf(IO_TRACE, "cp0 ???\n");
     }
-    */
-    
-    printf("cp0\n");
     
     return MIPS_OK;
 }
