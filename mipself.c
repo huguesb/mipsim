@@ -162,10 +162,6 @@ int mips_load_elf(MIPS *m, ELF_File *f)
         
         // default GCC/newlib memory layout
         
-        // Stack space : 0x7fff8000-0x80000000
-        // TODO : alloc on demand
-        m->mem.map_alloc(&m->mem, 0x7fff8000, 0x8000, MEM_RW);
-        
         // Some memory space apparently needed by newlib CRT or IDT monitor...
         // knowledge obtained after digging gdb sources to determine the reason
         // of a puzzling simulation mismatch...
