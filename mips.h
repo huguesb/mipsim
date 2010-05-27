@@ -32,10 +32,15 @@ enum {
     MEM_RWX      = 0,
     MEM_RW       = MEM_NOEXEC,
     MEM_RX       = MEM_READONLY,
-    MEM_R        = MEM_READONLY | MEM_NOEXEC
+    MEM_R        = MEM_READONLY | MEM_NOEXEC,
+    MEM_LAZY     = 16
 };
 
 typedef void (*mem_unmap)(MIPS_Memory *m);
+
+typedef void (*mem_dump_mapping)(FILE *f, const char *indent, MIPS_Memory *m);
+
+typedef int (*mem_pagefault)(MIPS_Memory *m, MIPS_Addr a);
 
 typedef int (*mem_map_alloc)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, short flags);
 typedef int (*mem_map_static)(MIPS_Memory *m, MIPS_Addr a, uint32_t s, uint8_t *d, short flags);
@@ -67,6 +72,10 @@ struct _MIPS_Memory {
     mem_write_half  write_h;
     mem_write_word  write_w;
     mem_write_dword write_d;
+    
+    mem_pagefault pagefault;
+    
+    mem_dump_mapping dump_mapping;
     
     void *d;
 };

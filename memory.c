@@ -96,6 +96,48 @@ int mips_tree_map_ro(MIPS_Memory *m, MIPS_Addr a, uint32_t s, uint8_t *d)
 
 ////////////////////////////////////////////////////////////////////////////////////
 
+void mips_simple_init(MIPS_Memory *mem);
+
+void mips_simple_dump_mapping(FILE *f, const char *indent, MIPS_Memory *m)
+{
+    MemMapping *mm = m ? m->d : NULL;
+    
+    while ( mm != NULL )
+    {
+        if ( mm->type == MAP_BLACKBOX )
+        {
+            fprintf(f, "%s R%c%c %08x %08x [BB]\n",
+                   indent,
+                   mm->flags & MEM_READONLY ? ' ' : 'W',
+                   mm->flags & MEM_NOEXEC ? ' ' : 'X',
+                   mm->start,
+                   mm->end - 1);
+            char sident[strlen(indent) + 2];
+            strcpy(sident, indent);
+            strcat(sident, "  ");
+            mips_simple_dump_mapping(f, sident, (MIPS_Memory*)mm->mapped);
+        } else {
+            fprintf(f, "%s R%c%c %08x %08x\n",
+                   indent,
+                   mm->flags & MEM_READONLY ? ' ' : 'W',
+                   mm->flags & MEM_NOEXEC ? ' ' : 'X',
+                   mm->start,
+                   mm->end - 1);
+        }
+        
+        mm = mm->next;
+    }
+}
+
+int mips_lazy_alloc_pagefault(MIPS_Memory *m, MIPS_Addr a)
+{
+    MIPS_Addr base = a & 0xFFFFF000;
+    
+    mipsim_printf(IO_DEBUG, "Page fault @ %08x => lazy alloc [%08x-%08x]\n", a, base, base + 0xFFF);
+    
+    return m->map_alloc(m, base, 0x1000, 0);
+}
+
 MemMapping* mips_simple_mapping(MIPS_Memory *m, MIPS_Addr a)
 {
     MemMapping *mm = m ? m->d : NULL;
@@ -108,9 +150,20 @@ MemMapping* mips_simple_mapping(MIPS_Memory *m, MIPS_Addr a)
         mm = mm->next;
     }
     
+    if ( m->pagefault != NULL )
+    {
+        if ( !m->pagefault(m, a) )
+        {
+            mem_pagefault pf = m->pagefault;
+            m->pagefault = NULL;
+            mm = mips_simple_mapping(m, a);
+            m->pagefault = pf;
+            return mm;
+        }
+    }
+    
     return NULL;
 }
-
 
 int mips_mapping_overlap(MIPS_Memory *m, MIPS_Addr start, MIPS_Addr end)
 {
@@ -134,9 +187,12 @@ void mips_simple_unmap(MIPS_Memory *m)
     while ( mm != NULL )
     {
         if ( mm->type == MAP_BLACKBOX )
+        {
             ((MIPS_Memory*)mm->mapped)->unmap((MIPS_Memory*)mm->mapped);
-        else if ( mm->type == MAP_DYNAMIC )
             free(mm->mapped);
+        } else if ( mm->type == MAP_DYNAMIC ) {
+            free(mm->mapped);
+        }
         
         tmp = mm->next;
         free(mm);
@@ -186,14 +242,35 @@ int mips_simple_map_alloc(MIPS_Memory *m, MIPS_Addr a, uint32_t s, short flags)
     if ( mips_mapping_overlap(m, a, a + s) )
         return 1;
     
-    MemMapping *mm = (MemMapping*)malloc(sizeof(MemMapping));
-    mm->type   = MAP_DYNAMIC;
-    mm->flags  = flags;
-    mm->start  = a;
-    mm->end    = a + s;
-    mm->mapped = malloc(s);
-    mm->next   = m->d;
-    m->d = mm;
+    if ( flags & MEM_LAZY )
+    {
+        MIPS_Memory *r = (MIPS_Memory*)malloc(sizeof(MIPS_Memory));
+        
+        // init block
+        mips_simple_init(r);
+        
+        r->pagefault = mips_lazy_alloc_pagefault;
+        
+        int ret = mips_simple_map_redir(m, a, s, r, flags);
+        
+        if ( ret )
+        {
+            mipsim_printf(IO_WARNING,
+                          "Failed creating lazily allocated chunk [%08x-%08x]\n",
+                          a, a + s);
+            free(r);
+            return ret;
+        }
+    } else {
+        MemMapping *mm = (MemMapping*)malloc(sizeof(MemMapping));
+        mm->type   = MAP_DYNAMIC;
+        mm->flags  = flags;
+        mm->start  = a;
+        mm->end    = a + s;
+        mm->mapped = malloc(s);
+        mm->next   = m->d;
+        m->d = mm;
+    }
     
     return 0;
 }
@@ -327,11 +404,16 @@ void mips_simple_write_d(MIPS_Memory *m, MIPS_Addr a, uint64_t d, int *stat)
 
 void mips_init_memory(MIPS *m)
 {
-    MIPS_Memory *mem = &m->mem;
-    
+    mips_simple_init(&m->mem);
+}
+
+void mips_simple_init(MIPS_Memory *mem)
+{
     mem->d = NULL;
     
     mem->unmap  = mips_simple_unmap;
+    
+    mem->pagefault = NULL;
     
     mem->map_static = mips_simple_map_static;
     mem->map_redir  = mips_simple_map_redir;
@@ -346,4 +428,6 @@ void mips_init_memory(MIPS *m)
     mem->write_h = mips_simple_write_h;
     mem->write_w = mips_simple_write_w;
     mem->write_d = mips_simple_write_d;
+    
+    mem->dump_mapping = mips_simple_dump_mapping;
 }
