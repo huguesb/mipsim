@@ -57,6 +57,15 @@ MIPSim basic interface is a GDB-like shell supporting the command set described
 below. Parameters in angle bracket are mandatory, parameters in square brackets
 are optional.
 
+MIPSim shell provides advanced command editing (with, e.g. tab completion) and
+command history thanks to GNU readline library. Additionaly, most numerical
+parameters can be arbitrary mathematical expression with C operators and literals
+can be either register names, ELF symbols or immediates in base 8, 10 or 16.
+
+IMPORTANT : parameter splitting is strict. If you want to use whitspaces in
+mathematical expressions for readability, double-quote the parameter.
+
+
 * load <filepath>
 --------------------------------------------------------------------------------
  Short-hand : l
@@ -209,6 +218,23 @@ are optional.
  Display information about a breakpoint when given a parameter, about all
  breakpoints otherwise
  
+ 
+* mmap [start] [size] [flags]
+--------------------------------------------------------------------------------
+ 
+ When invoked without parameters, display all memory mappings of the simulated
+ machine, Otherwise create a new mapping.
+ 
+ Mappings MAY NOT overlap.
+ 
+ Default size value is the amount of memory needed to reach next page boundary.
+ 
+ Flags is in {w, x, wx}. wx is accepted as an alias to wx but its use is
+ discouraged.
+ 
+ Default flags value is w.
+
+
 
 Limitations
 -----------
