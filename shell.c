@@ -783,6 +783,20 @@ int shell_dbp(int argc, char **argv, Shell_Env *e)
     return COMMAND_OK;
 }
 
+int shell_mmap(int argc, char **argv, Shell_Env *e)
+{
+    MIPS_Memory *mem = &e->m->mem;
+    if ( argc == 1 )
+    {
+        printf("Memory mappings :\n");
+        mem->dump_mapping(stdout, " ", mem);
+    } else if ( argc == 3 ) {
+        
+    } else {
+        return COMMAND_PARAM_COUNT;
+    }
+}
+
 int shell_help(int argc, char **argv, Shell_Env *e);
 
 static const Command commands[] = {
@@ -801,6 +815,7 @@ static const Command commands[] = {
     {"dbp",   NULL, shell_dbp,      "[id]", ""},
     {"dump",  "d",  shell_dump,     "", ""},
     {"trace", "t",  shell_trace,    "[1 | 0]", ""},
+    {"mmap",  NULL, shell_mmap,     "[address] [size]", ""},
     {"quit",  "q",  shell_quit,     "", ""},
     {"exit",  NULL, shell_quit,     "", ""},
     {"help",  "h",  shell_help,     "", ""},
