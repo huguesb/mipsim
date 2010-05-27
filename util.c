@@ -10,7 +10,10 @@
 
 #include "util.h"
 
+#include <stdlib.h>
 #include <string.h>
+
+#include "io.h"
 
 enum {
     CASE_MASK = ~('a' - 'A'),
@@ -151,7 +154,7 @@ uint32_t str_to_num(const char *s, const char **end, int *error)
                 *error = E_INVALID;
             if ( end != NULL )
                 *end = s;
-            return 0;
+            return r;
         }
         
         if ( (r * base) / base != r )
@@ -193,6 +196,32 @@ int is_ident(char c)
     return is_letter(c) || c == '$' || c == '_';
 }
 
+uint32_t eval_top(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_ternary(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_or(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_xor(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_and(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_equ(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_rel(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_shift(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_addsub(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_multdiv(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_fact(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_power(const char **s, _symbol_value eval_sym, void *d, int *error);
+uint32_t eval_literal(const char **s, _symbol_value eval_sym, void *d, int *error);
+
+void skip_ws(const char **s)
+{
+    while ( **s == ' ' )
+        ++*s;
+}
+
+void next_non_ws(const char **s)
+{
+    ++*s;
+    skip_ws(s);
+}
+
 /*!
     \brief Evaluate an expression to an integer
     \param s expression
@@ -202,19 +231,377 @@ int is_ident(char c)
 */
 uint32_t eval_expr(const char *s, _symbol_value eval_sym, void *d, int *error)
 {
-    uint32_t r = 0;
+    skip_ws(&s);
     
-//     while ( *s && *s <= ' ' )
-//         ++s;
-//     
-//     if ( !(is_ident(*s) || *s == '(' || *s == '~') )
-//     {
-//         if ( error != NULL )
-//             *error = E_SYNTAX;
-//         return 0;
-//     }
+//     mipsim_printf(IO_DEBUG, "evaluating : %s\n", s);
     
+    return eval_top(&s, eval_sym, d, error);
+}
+
+/*
+    Top-Down expression evaluation :
     
+    Top
+    Ternary
+    LogOr
+    LogXor
+    LogAnd
+    Equ
+    Rel
+    Shift
+    AddSub
+    MultDiv
+    Fact
+    Power
+    Literal -> Paren : Top
     
-    return str_to_num(s, NULL, error);
+*/
+
+uint32_t eval_top(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    return eval_ternary(s, eval_sym, d, error);
+}
+
+uint32_t eval_ternary(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t cond = eval_or(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    
+    if ( **s != '?' )
+        return cond;
+    
+    next_non_ws(s);
+    
+    uint32_t val1 = eval_top(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    
+    if ( **s != ':' )
+    {
+        *error = E_SYNTAX;
+        return 0;
+    }
+    
+    next_non_ws(s);
+    
+    uint32_t val2 = eval_top(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+//     mipsim_printf(IO_DEBUG, "ternary : %08x ? %08x : %08x\n", cond, val1, val2);
+    
+    return cond ? val1 : val2;
+}
+
+uint32_t eval_or(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_xor(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    
+    while ( **s == '|' )
+    {
+        next_non_ws(s);
+        
+        val |= eval_xor(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        skip_ws(s);
+    }
+    
+//     mipsim_printf(IO_DEBUG, "or : %08x\n", val);
+    
+    return val;
+}
+
+uint32_t eval_xor(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_and(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    
+    while ( **s == '^' )
+    {
+        next_non_ws(s);
+        
+        val ^= eval_and(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        skip_ws(s);
+    }
+    
+//     mipsim_printf(IO_DEBUG, "xor : %08x\n", val);
+    
+    return val;
+}
+
+uint32_t eval_and(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_equ(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    
+    while ( **s == '&' )
+    {
+        next_non_ws(s);
+        
+        val &= eval_equ(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        skip_ws(s);
+    }
+    
+//     mipsim_printf(IO_DEBUG, "and : %08x\n", val);
+    
+    return val;
+}
+
+uint32_t eval_equ(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_rel(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    char c = **s;
+    
+    while ( c == '=' || c == '!' )
+    {
+        ++*s;
+        
+        if ( **s != '=' )
+        {
+            *error = E_SYNTAX;
+            return 0;
+        }
+        
+        next_non_ws(s);
+        
+        uint32_t tmp = eval_rel(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        val = c == '=' ? (val == tmp) : (val != tmp);
+        
+        skip_ws(s);
+        
+        c = **s;
+    }
+    
+//     mipsim_printf(IO_DEBUG, "equ : %08x\n", val);
+    
+    return val;
+}
+
+uint32_t eval_rel(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_shift(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    return val;
+}
+
+uint32_t eval_shift(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_addsub(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    return val;
+}
+
+uint32_t eval_addsub(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_multdiv(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    char c = **s;
+    
+    while ( c == '+' || c == '-' )
+    {
+        next_non_ws(s);
+        
+        uint32_t tmp = eval_multdiv(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        if ( c == '+' )
+            val += tmp;
+        else
+            val -= tmp;
+        
+        skip_ws(s);
+        
+        c = **s;
+    }
+    
+//     mipsim_printf(IO_DEBUG, "add : %08x\n", val);
+    
+    return val;
+}
+
+uint32_t eval_multdiv(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_fact(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    skip_ws(s);
+    char c = **s;
+    
+    while ( c == '*' || c == '/' || c == '%' )
+    {
+        next_non_ws(s);
+        
+        uint32_t tmp = eval_fact(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        if ( c == '*' )
+        {
+            val *= tmp;
+        } else if ( c == '/' ) {
+            if ( !tmp )
+            {
+                *error = E_INVALID;
+                return 0;
+            }
+            val /= tmp;
+        } else {
+            if ( !tmp )
+            {
+                *error = E_INVALID;
+                return 0;
+            }
+            val %= tmp;
+        }
+        
+        skip_ws(s);
+        
+        c = **s;
+    }
+    
+//     mipsim_printf(IO_DEBUG, "mlt : %08x\n", val);
+    
+    return val;
+}
+
+uint32_t eval_fact(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_power(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    return val;
+}
+
+uint32_t eval_power(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    uint32_t val = eval_literal(s, eval_sym, d, error);
+    
+    if ( *error )
+        return 0;
+    
+    return val;
+}
+
+uint32_t eval_literal(const char **s, _symbol_value eval_sym, void *d, int *error)
+{
+    // TODO : try symbol evaluation
+    
+    uint32_t val = 0;
+    
+    if ( **s == '(' )
+    {
+        next_non_ws(s);
+        val = eval_top(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+//         mipsim_printf(IO_DEBUG, "() : %08x\n", val);
+        
+        skip_ws(s);
+        
+        if ( **s != ')' )
+        {
+            *error = E_SYNTAX;
+            return 0;
+        }
+        
+        next_non_ws(s);
+        
+    } else if ( is_number(**s) ) {
+        val = str_to_num(*s, s, error);
+        
+        if ( *error == E_INVALID && !(is_number(**s) || is_letter(**s)) )
+            *error = E_NONE;
+        
+        if ( *error )
+            return 0;
+        
+//         mipsim_printf(IO_DEBUG, "lit : %08x\n", val);
+        
+    } else if ( is_ident(**s) || **s == '@' ) {
+        int n = 1;
+        
+        while ( is_ident((*s)[n]) || is_number((*s)[n]) || (*s)[n] == '@' )
+            ++n;
+        
+        char *ident = malloc((n+1) * sizeof(char));
+        memcpy(ident, *s, n);
+        ident[n] = 0;
+        
+        *s += n;
+        
+        val = eval_sym(ident, d, error);
+        
+//         mipsim_printf(IO_DEBUG, "sym : %s = %08x\n", ident, val);
+        
+        free(ident);
+        
+        if ( *error )
+            return 0;
+        
+//         mipsim_printf(IO_DEBUG, "remains : %s\n", *s);
+    } else {
+        *error = E_SYNTAX;
+    }
+    
+    return val;
 }
