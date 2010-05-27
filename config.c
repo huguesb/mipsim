@@ -14,6 +14,7 @@
 
 #include "mips.h"
 #include "io.h"
+#include "util.h"
 
 /*!
     \brief Accessor to the global configuration of the application
@@ -47,6 +48,8 @@ int mipsim_config_init(int argc, char **argv)
     
     cfg->phys_memory_size  = 0x00100000;
     cfg->newlib_stack_size = 0x00800000;
+    
+    int error;
     
     for ( int i = 1; i < argc; ++i )
     {
@@ -95,10 +98,10 @@ int mipsim_config_init(int argc, char **argv)
             *argv[i] = 0;
             if ( i+1 < argc )
             {
-                cfg->reloc_text = strtoul(argv[++i], &arg, 0);
+                cfg->reloc_text = str_to_num(argv[++i], NULL, &error);
                 *argv[i] = 0;
                 
-                if ( !cfg->reloc_text )
+                if ( error )
                 {
                     mipsim_printf(IO_WARNING, "CLI: invalid value for -t switch\n");
                 }
@@ -109,10 +112,10 @@ int mipsim_config_init(int argc, char **argv)
             *argv[i] = 0;
             if ( i+1 < argc )
             {
-                cfg->reloc_data = strtoul(argv[++i], &arg, 0);
+                cfg->reloc_data = str_to_num(argv[++i], NULL, &error);
                 *argv[i] = 0;
                 
-                if ( !cfg->reloc_data )
+                if ( error )
                 {
                     mipsim_printf(IO_WARNING, "CLI: invalid value for -d switch\n");
                 }
@@ -123,15 +126,29 @@ int mipsim_config_init(int argc, char **argv)
             *argv[i] = 0;
             if ( i+1 < argc )
             {
-                cfg->phys_memory_size = strtoul(argv[++i], &arg, 0);
+                cfg->phys_memory_size = str_to_num(argv[++i], NULL, &error);
                 *argv[i] = 0;
                 
-                if ( !cfg->phys_memory_size )
+                if ( error )
                 {
                     mipsim_printf(IO_WARNING, "CLI: invalid value for -s switch\n");
                 }
             } else {
                 mipsim_printf(IO_WARNING, "CLI: missing value for -s switch\n");
+            }
+        } else if ( !strcmp(arg, "-nss") ) {
+            *argv[i] = 0;
+            if ( i+1 < argc )
+            {
+                cfg->newlib_stack_size = str_to_num(argv[++i], NULL, &error);
+                *argv[i] = 0;
+                
+                if ( error )
+                {
+                    mipsim_printf(IO_WARNING, "CLI: invalid value for -nss switch\n");
+                }
+            } else {
+                mipsim_printf(IO_WARNING, "CLI: missing value for -nss switch\n");
             }
         }
     }
