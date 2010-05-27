@@ -274,6 +274,7 @@ int elf_file_relocate(ELF_File *elf);
 
 ELF_Section* elf_section(ELF_File *elf, const char *name);
 
+uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat);
 const char* elf_symbol_name(ELF_File *elf, ELF32_Addr value, int *stat);
 
 #endif

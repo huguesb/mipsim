@@ -962,7 +962,7 @@ ELF32_Addr elf_symbol_address(ELF_File *elf, ELF_Sym *sym)
     if ( elf == NULL || sym == NULL )
         return 0;
     
-    if ( sym->s_shndx == SHN_ABS )
+    if ( sym->s_shndx == SHN_ABS || elf->header->e_type == ET_EXEC )
         return sym->s_value;
     
     ELF_Section *s = sym->s_shndx < elf->nsection ? elf->sections[sym->s_shndx] : NULL;
@@ -1086,7 +1086,7 @@ int elf_file_relocate(ELF_File *elf)
                         return 1;
                     }
                     
-                    ELF32_Word AHL = (prevA << 16) | (A & 0x0000FFFF); 
+                    ELF32_Word AHL = (prevA << 16) | (short)A; 
                     
                     if ( S != prevS )
                     {
@@ -1094,8 +1094,13 @@ int elf_file_relocate(ELF_File *elf)
                         return 1;
                     }
                     
-                    elf_write_word(prevrd, endian, (prevA & 0xFFFF0000) | (((AHL + S) >> 16) & 0x0000FFFF));
-                    elf_write_word(rd,     endian, (A     & 0xFFFF0000) | ( (AHL + S)        & 0x0000FFFF));
+                    ELF32_Word RS = AHL + S;
+                    
+                    elf_write_word(prevrd, endian,
+                                   (prevA & 0xFFFF0000) | (((RS - (short)RS) >> 16) & 0x0000FFFF));
+                    
+                    elf_write_word(rd,     endian,
+                                   (A     & 0xFFFF0000) | ( RS        & 0x0000FFFF));
                     
                     //mipsim_printf(IO_DEBUG, "-> 0x%08x\n", elf_read_word(prevrd, endian));
                     
@@ -1136,6 +1141,42 @@ int elf_file_relocate(ELF_File *elf)
             }
         }
     }
+    
+    return 0;
+}
+
+/*!
+    \brief Try to find a symbol for a given name
+    \param elf ELF file
+    \param name symbol name
+    \param stat If not null, will hold information about the search result(s)
+*/
+uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat)
+{
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
+    {
+        ELF_Section *s = elf->sections[i];
+        
+        if ( s == NULL || s->s_type != SHT_SYMTAB )
+            continue;
+        
+        ELF_Sym *sym = (ELF_Sym*)((void*)s->s_data);
+        const ELF32_Word n = s->s_size / s->s_entsize;
+        
+        for ( ELF32_Word k = 0; k < n; ++k )
+        {
+            if ( !strcmp(name, elf_string(elf, s->s_link, sym[k].s_name)) )
+            {
+                if ( stat )
+                    *stat = ELF32_ST_TYPE(sym[k].s_info);
+                
+                return elf_symbol_address(elf, sym + k);
+            }
+        }
+    }
+    
+    if ( stat != NULL )
+        *stat = 1;
     
     return 0;
 }
