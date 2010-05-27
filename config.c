@@ -44,7 +44,9 @@ int mipsim_config_init(int argc, char **argv)
     
     cfg->reloc_text  = 0x00400000;
     cfg->reloc_data  = 0xFFFFFFFF;
-    cfg->phys_memory_size = 0x00100000;
+    
+    cfg->phys_memory_size  = 0x00100000;
+    cfg->newlib_stack_size = 0x00800000;
     
     for ( int i = 1; i < argc; ++i )
     {
