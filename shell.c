@@ -780,6 +780,7 @@ int shell_dbp(int argc, char **argv, Shell_Env *e)
         dbpl(m->breakpoints);
         printf("----------------------------------------\n");
     }
+    
     return COMMAND_OK;
 }
 
@@ -790,11 +791,52 @@ int shell_mmap(int argc, char **argv, Shell_Env *e)
     {
         printf("Memory mappings :\n");
         mem->dump_mapping(stdout, " ", mem);
-    } else if ( argc == 3 ) {
+    } else if ( argc <= 4 ) {
+        int error;
+        int start = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid [start] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        int size = argc > 2
+                    ? eval_expr(argv[2], symbol_value, e, &error)
+                    : ((start & 0xFFF) ? 0x1000 - (start & 0xFFF) : 0x1000);
+        
+        if ( error )
+        {
+            printf("Invalid [size] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        int flags = MEM_NOEXEC;
+        
+        if ( argc == 4 )
+        {
+            if ( !strcmp(argv[3], "x") )
+                flags = MEM_READONLY;
+            else if ( !strcmp(argv[3], "w") )
+                flags = MEM_NOEXEC;
+            else if ( !strcmp(argv[3], "wx") || !strcmp(argv[3], "xw") )
+                flags = 0;
+            else {
+                printf("Invalid [flags] parameter\n");
+                return COMMAND_PARAM_TYPE;
+            }
+        }
+        
+        int ret = mem->map_alloc(mem, start, size, flags);
+        
+        if ( ret )
+            return COMMAND_FAIL;
         
     } else {
         return COMMAND_PARAM_COUNT;
     }
+    
+    return COMMAND_OK;
 }
 
 int shell_help(int argc, char **argv, Shell_Env *e);
@@ -815,7 +857,7 @@ static const Command commands[] = {
     {"dbp",   NULL, shell_dbp,      "[id]", ""},
     {"dump",  "d",  shell_dump,     "", ""},
     {"trace", "t",  shell_trace,    "[1 | 0]", ""},
-    {"mmap",  NULL, shell_mmap,     "[address] [size]", ""},
+    {"mmap",  NULL, shell_mmap,     "[address] [size] [flags]", ""},
     {"quit",  "q",  shell_quit,     "", ""},
     {"exit",  NULL, shell_quit,     "", ""},
     {"help",  "h",  shell_help,     "", ""},
