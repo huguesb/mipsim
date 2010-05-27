@@ -12,8 +12,11 @@
 
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _SHELL_USE_READLINE_
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
 
 #include "io.h"
 #include "util.h"
@@ -1021,7 +1024,7 @@ int mipsim_shell(int cli_argc, char **cli_argv)
     env.f = NULL;
     
     // try to load a file with leftover cli params
-    argv = malloc(argc * sizeof(char*));
+    argv = malloc(cli_argc * sizeof(char*));
     argc = 0;
     for ( int i = 0; i < cli_argc; ++i )
         if ( *cli_argv[i] )
@@ -1030,13 +1033,27 @@ int mipsim_shell(int cli_argc, char **cli_argv)
     shell_load(argc, argv, &env);
     free(argv);
     
+    #ifdef _SHELL_USE_READLINE_
+    using_history();
+    #endif
+    
     while ( ret != COMMAND_EXIT )
     {
+        #ifdef _SHELL_USE_READLINE_
         cmd = readline("mipsim> ");
+        #else
+        printf("mipsim> ");
+        fflush(stdout);
+        cmd = malloc(256*sizeof(char));
+        fgets(cmd, 255, stdin);
+        cmd[strlen(cmd)-1] = 0;
+        #endif
         
         if ( cmd && *cmd )
         {
+            #ifdef _SHELL_USE_READLINE_
             add_history(cmd);
+            #endif
             
             argv = tokenize(cmd, &argc);
             
@@ -1061,6 +1078,10 @@ int mipsim_shell(int cli_argc, char **cli_argv)
         
         free(cmd);
     }
+    
+    #ifdef _SHELL_USE_READLINE_
+    clear_history();
+    #endif
     
     /*
         always destroy emulated machine before ELF file
