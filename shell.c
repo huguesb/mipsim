@@ -96,17 +96,16 @@ enum {
 
 typedef struct _Command {
     const char *name;
+    const char *shorthand;
     command_handler handler; 
+    const char *params;
     const char *help;
 } Command;
 
 int shell_load(int argc, char **argv, Shell_Env *e)
 {
-    if ( argc <= 1 )
-    {
-        printf("load <filepath>\n");
-        return 1;
-    }
+    if ( argc != 2 )
+        return COMMAND_PARAM_COUNT;
     
     if ( e->m != NULL )
     {
@@ -171,6 +170,22 @@ int shell_reset(int argc, char **argv, Shell_Env *e)
     m->hw.reset(&m->hw);
     for ( int i = 0; i < 4; ++i )
         m->cp[i].reset(&m->cp[i]);
+    
+    return COMMAND_OK;
+}
+
+int shell_print(int argc, char **argv, Shell_Env *e)
+{
+    for ( int i = 1; i < argc; ++i )
+    {
+        int error;
+        uint32_t val = eval_expr(argv[i], symbol_value, e, &error);
+        
+        if ( error )
+            printf("  %d : error %d\n", i, error);
+        else
+            printf("  %d : %08x\n", i, val);
+    }
     
     return COMMAND_OK;
 }
@@ -247,7 +262,6 @@ int shell_run(int argc, char **argv, Shell_Env *e)
         printf("running from 0x%08x\n", addr);
         mips_set_reg(m, PC, addr);
     } else if ( argc != 1 ) {
-        printf("run [address]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -281,7 +295,6 @@ int shell_step(int argc, char **argv, Shell_Env *e)
             return COMMAND_PARAM_TYPE;
         }
     } else if ( argc != 1 ) {
-        printf("step [count]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -307,7 +320,6 @@ int shell_stepi(int argc, char **argv, Shell_Env *e)
             return COMMAND_PARAM_TYPE;
         }
     } else if ( argc != 1 ) {
-        printf("stepi [count]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -328,11 +340,9 @@ int shell_trace(int argc, char **argv, Shell_Env *e)
         {
             n = (*param - '0');
         } else {
-            printf("trace [1 | 0]\n");
             return COMMAND_PARAM_TYPE;
         }
     } else if ( argc != 1 ) {
-        printf("trace [1 | 0]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -426,7 +436,6 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
                 return COMMAND_PARAM_TYPE;
             }
         } else if ( argc != 2 ) {
-            printf("dasm [start] [end]\n");
             return COMMAND_PARAM_COUNT;
         }
     }
@@ -472,7 +481,6 @@ int shell_dreg(int argc, char **argv, Shell_Env *e)
     {
         return shell_dump(argc, argv, e);
     } else if ( argc != 2 ) {
-        printf("dreg <register>\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -496,10 +504,7 @@ int shell_sreg(int argc, char **argv, Shell_Env *e)
         return COMMAND_NEED_TARGET;
     
     if ( argc != 3 )
-    {
-        printf("dreg <register> <value>\n");
         return COMMAND_PARAM_COUNT;
-    }
     
     int id = mips_reg_id(argv[1]);
     
@@ -569,7 +574,6 @@ int shell_dmem(int argc, char **argv, Shell_Env *e)
             printf("\n");
         }
     } else {
-        printf("dmem <start> [end]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -631,7 +635,6 @@ int shell_smem(int argc, char **argv, Shell_Env *e)
             return COMMAND_INVALID;
         }
     } else {
-        printf("smem <address> <value> [bytecount]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -689,7 +692,6 @@ int shell_addbp(int argc, char **argv, Shell_Env *e)
             }
         }
     } else {
-        printf("addbp <start> [end] [mask] [type]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -721,7 +723,6 @@ int shell_rmbp(int argc, char **argv, Shell_Env *e)
         
         mips_breakpoint_remove(m, id);
     } else {
-        printf("rmbp [id]\n");
         return COMMAND_PARAM_COUNT;
     }
     
@@ -750,10 +751,7 @@ int shell_dbp(int argc, char **argv, Shell_Env *e)
         return COMMAND_NEED_TARGET;
     
     if ( argc > 2 )
-    {
-        printf("dbp [id]\n");
         return COMMAND_PARAM_COUNT;
-    }
     
     if ( argc == 2 )
     {
@@ -788,35 +786,25 @@ int shell_dbp(int argc, char **argv, Shell_Env *e)
 int shell_help(int argc, char **argv, Shell_Env *e);
 
 static const Command commands[] = {
-    // shortcuts
-    {"l",  shell_load, ""},
-    {"r",  shell_run, ""},
-    {"s",  shell_step, ""},
-    {"si", shell_stepi, ""},
-    {"d",  shell_dump, ""},
-    {"t",  shell_trace, ""},
-    {"q",  shell_quit, ""},
-    
-    // full names
-    {"load",  shell_load, ""},
-    {"reset", shell_reset, ""},
-    {"dasm",  shell_dasm, ""},
-    {"dreg",  shell_dreg, ""},
-    {"sreg",  shell_sreg, ""},
-    {"dmem",  shell_dmem, ""},
-    {"smem",  shell_smem, ""},
-    {"run",   shell_run, ""},
-    {"step",  shell_step, ""},
-    {"stepi", shell_stepi, ""},
-    {"addbp", shell_addbp, ""},
-    {"rmbp",  shell_rmbp, ""},
-    {"dbp",   shell_dbp, ""},
-    {"dump",  shell_dump, ""},
-    {"trace", shell_trace, ""},
-    {"quit",  shell_quit, ""},
-    {"exit",  shell_quit, ""},
-    {"help",  shell_help, ""},
-    {NULL, NULL, NULL}
+    {"load",  "l",  shell_load,     "<filepath>", ""},
+    {"print", "p",  shell_print,    "<expr>+", ""},
+    {"dasm",  NULL, shell_dasm,     "[start] [end]", ""},
+    {"dreg",  NULL, shell_dreg,     "<reg>", ""},
+    {"sreg",  NULL, shell_sreg,     "<reg> <value>", ""},
+    {"dmem",  NULL, shell_dmem,     "<start> <end>", ""},
+    {"smem",  NULL, shell_smem,     "<address> <value> [bytecount]", ""},
+    {"run",   "r",  shell_run,      "[address]", ""},
+    {"step",  "s",  shell_step,     "[count]", ""},
+    {"stepi", "si", shell_stepi,    "[count]", ""},
+    {"addbp", NULL, shell_addbp,    "<start> [end] [mask] [type]", ""},
+    {"rmbp",  NULL, shell_rmbp,     "[id]", ""},
+    {"dbp",   NULL, shell_dbp,      "[id]", ""},
+    {"dump",  "d",  shell_dump,     "", ""},
+    {"trace", "t",  shell_trace,    "[1 | 0]", ""},
+    {"quit",  "q",  shell_quit,     "", ""},
+    {"exit",  NULL, shell_quit,     "", ""},
+    {"help",  "h",  shell_help,     "", ""},
+    {NULL, NULL, NULL, NULL, NULL}
 };
 
 int shell_help(int argc, char **argv, Shell_Env *e)
@@ -831,28 +819,31 @@ int shell_help(int argc, char **argv, Shell_Env *e)
         {
             if ( !strcmp(c->name, argv[1]) )
             {
-                printf("%s : %s", c->name, c->help);
+                printf("%s %s\n%s", c->name, c->params, c->help);
                 break;
             }
             
             ++c;
         }
     } else {
-        printf(
-            "Supported commands :\n"
-            " load\n"
-            " run\n"
-            " step\n"
-            " stepi\n"
-            " dasm\n"
-            " dreg\n"
-            " dmem\n"
-            " sreg\n"
-            " smem\n"
-            " exit\n"
-            "\n"
-            "type : \"help\" followed by a command name for specific help.\n"
-        );
+        printf("Supported commands :\n");
+
+        const Command *c = commands;
+        
+        while ( c->name != NULL && c->help != NULL )
+        {
+            printf("  %s", c->name);
+            
+            int n = 10 - strlen(c->name);
+            while ( n-- )
+                printf(" ");
+            
+            printf("%s\n", c->params);
+            
+            ++c;
+        }
+        
+        printf("\ntype : \"help\" followed by a command name for specific help.\n");
     }
     
     return COMMAND_OK;
@@ -868,16 +859,16 @@ int execute_command(int argc, char **argv, Shell_Env *e)
     
     while ( c->name != NULL && c->handler != NULL )
     {
-        for ( int i = 0; ; ++i )
+        if ( !strcmp(c->name, *argv)
+            || (c->shorthand != NULL && !strcmp(c->shorthand, *argv)) )
         {
-            if ( c->name[i] == '\0' && (argv[0][i] == '\0' || argv[0][i] == ' ') )
-            {
-                return c->handler(argc, argv, e);
-            } else if ( c->name[i] != argv[0][i] ) {
-                break;
-            }
+            int ret = c->handler(argc, argv, e);
+            
+            if ( ret == COMMAND_PARAM_COUNT )
+                printf("%s\t%s\n", c->name, c->params);
+            
+            return ret;
         }
-        
         ++c;
     }
     
@@ -909,7 +900,10 @@ char** tokenize(char *cmd, int *argc)
             fresh = 1;
         } else {
             if ( *iter == '\"' )
+            {
+                *iter = 0;
                 quoted = !quoted;
+            }
             
             if ( fresh )
                 ++n;
