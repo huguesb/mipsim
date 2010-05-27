@@ -160,34 +160,44 @@ int mips_load_elf(MIPS *m, ELF_File *f)
                 last = s->p_vaddr + s->p_memsz;
         }
         
-        // default GCC/newlib memory layout
-        
-        // Some memory space apparently needed by newlib CRT or IDT monitor...
-        // knowledge obtained after digging gdb sources to determine the reason
-        // of a puzzling simulation mismatch...
-        // TODO : allow tweaking the size of this region
-        // TODO : alloc on demand
-        m->mem.map_alloc(&m->mem, 0x80000000, 0x00800000, MEM_RW);
-        
-        // alloc data beyond bss for dynamic data
-        // TODO : alloc on-demand
-        if ( sz < cfg->phys_memory_size )
+        if ( cfg->newlib_stack_size )
         {
-            m->mem.map_alloc(&m->mem, last, cfg->phys_memory_size - sz, MEM_RW);
+            // Some memory space apparently needed by newlib CRT or IDT monitor...
+            // It appears that the get_mem_info monitor entry point returns the size
+            // of this region (but not the start...) and that this region is used
+            // a stack space, contrary to what one might expect... (stack space
+            // is usually placed AFTER dynamic data so AFTER program space...)
+            
+            m->mem.map_alloc(&m->mem, 0x80000000, cfg->newlib_stack_size, MEM_RW | MEM_LAZY);
+        }
+        
+        // alloc data beyond bss for dynamic datas
+        ELF32_Addr la = (last + (cfg->phys_memory_size - sz)) & 0xFFFFF000;
+        
+        if ( la <= last + 0x400 )
+        {
+            mipsim_printf(IO_WARNING,
+                          "Program too large : only %d bytes left for stack and heap.\n",
+                          cfg->phys_memory_size - sz);
+        }
+        
+        if ( la > last )
+        {
+            m->mem.map_alloc(&m->mem, last, la - last, MEM_RW | MEM_LAZY);
         } else {
             mipsim_printf(IO_WARNING, "Program occupies all physical memory : no space left for dyn data\n");
         }
         
         if ( f->header )
             mips_set_reg(m, PC, f->header->e_entry);
+        
+        mips_set_reg(m, SP, la);
     } else if ( f->header->e_type == ET_REL ) {
         // when loading a relocatable binary :
         //  - perform section placement according to constraints
         //  - perform relocations
         //  - map code on a section basis, check for overlap
-        //    honor WX attributes [TODO]
-        
-        // TODO : different alloc/map strategy
+        //  - honor WX attributes
         
         if ( place_sections(f) )
         {
@@ -210,7 +220,7 @@ int mips_load_elf(MIPS *m, ELF_File *f)
             
             sz += s->s_size;
             
-            if ( sz >= cfg->phys_memory_size )
+            if ( sz > cfg->phys_memory_size )
             {
                 mipsim_printf(IO_WARNING,
                               "Program too large (availeable=%08x, required>=%08x)\n",
@@ -230,22 +240,26 @@ int mips_load_elf(MIPS *m, ELF_File *f)
             
             if ( m->mem.map_static(&m->mem, s->s_addr, s->s_size, s->s_data, flags) )
             {
-                mipsim_printf(IO_WARNING, "Failed mapping program segment in simulator memory\n");
+                mipsim_printf(IO_WARNING, "Failed mapping section in simulator memory\n");
                 return 1;
             }
         }
         
         // allocate remaining space between static data and first invalid address (used for both
         // stack and dynamic data)
-        // TODO : alloc on demand
         ELF32_Addr dla = section_addr_end[1] == 0xFFFFFFFF ? section_addr_end[0] : section_addr_end[1];
-        ELF32_Addr la = dla + (cfg->phys_memory_size - sz);
+        ELF32_Addr la = (dla + (cfg->phys_memory_size - sz)) & 0xFFFFF000;
         
-        if ( cfg->phys_memory_size > sz )
+        if ( la <= dla + 0x400 )
         {
-            m->mem.map_alloc(&m->mem, dla, cfg->phys_memory_size - sz, MEM_RW);
-        } else {
-            mipsim_printf(IO_WARNING, "Program occupies all physical memory : no space left for dyn data\n");
+            mipsim_printf(IO_WARNING,
+                          "Program too large : only %d bytes left for stack and heap.\n",
+                          cfg->phys_memory_size - sz);
+        }
+        
+        if ( la > dla )
+        {
+            m->mem.map_alloc(&m->mem, dla, la - dla, MEM_RW | MEM_LAZY);
         }
         
         // default register values

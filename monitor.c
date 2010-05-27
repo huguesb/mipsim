@@ -11,6 +11,7 @@
 #include "monitor.h"
 
 #include "io.h"
+#include "config.h"
 
 /*!
     \internal
@@ -96,6 +97,8 @@ int mips_syscall(MIPS *m, int code)
 */
 int mips_monitor(MIPS *m, int entry)
 {
+    MIPSIM_Config *cfg = mipsim_config();
+    
     switch ( entry )
     {
         case 12 :
@@ -201,7 +204,7 @@ int mips_monitor(MIPS *m, int entry)
             // hardcoded mem info
             // see memory.c:mips_init_memory() for more details
             // without this newlib CRT goes nuts...
-            mips_write_w(m, a + 0, 0x00800000, NULL);
+            mips_write_w(m, a + 0, cfg->newlib_stack_size, NULL);
             mips_write_w(m, a + 4, 0, NULL);
             mips_write_w(m, a + 8, 0, NULL);
             
