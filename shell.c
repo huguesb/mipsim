@@ -67,7 +67,11 @@ uint32_t symbol_value(const char *n, void *d, int *error)
     
     if ( !found && f != NULL )
     {
-        // TODO : symbol lookup
+        int stat;
+        value = elf_symbol_value(f, n, &stat);
+        
+        if ( !stat )
+            found = 1;
     }
     
     if ( !found )
@@ -385,6 +389,8 @@ int shell_dump(int argc, char **argv, Shell_Env *e)
 
 const char* find_symbol(MIPS_Addr org, MIPS_Addr val, void *d)
 {
+    (void)org;
+    
     Shell_Env *e = (Shell_Env*)d;
     
     // TODO : use relocation information when available to avoid ambiguities ?
@@ -796,7 +802,7 @@ int shell_mmap(int argc, char **argv, Shell_Env *e)
         mem->dump_mapping(stdout, " ", mem);
     } else if ( argc <= 4 ) {
         int error;
-        int start = eval_expr(argv[1], symbol_value, e, &error);
+        MIPS_Addr start = eval_expr(argv[1], symbol_value, e, &error);
         
         if ( error )
         {
@@ -804,7 +810,7 @@ int shell_mmap(int argc, char **argv, Shell_Env *e)
             return COMMAND_PARAM_TYPE;
         }
         
-        int size = argc > 2
+        MIPS_Addr size = argc > 2
                     ? eval_expr(argv[2], symbol_value, e, &error)
                     : ((start & 0xFFF) ? 0x1000 - (start & 0xFFF) : 0x1000);
         
