@@ -23,3 +23,19 @@ TODO :
  * tests
     - some assembly code (teachers probably expect that...)
     - more complex C code
+
+
+Priorities :
+    * documentation
+    * tests
+    * automated tester
+
+Goodies :
+    * polish expr eval
+    * sort memory mappings by priority
+    * architecture selection
+
+Extras:
+    * proper exceptions
+    * watchpoints
+    * FPU
