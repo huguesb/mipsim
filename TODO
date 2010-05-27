@@ -2,8 +2,7 @@
 TODO :
  * document everything
  * use a binary tree for memory mappings ?
- * on demand allocation
- * field-test used memory by C programs
+ * on demand memory allocation (page granularity)
  
  * Coprocessor support
     - model somewhat accurately control regs of cp1 (and cp0 ???)

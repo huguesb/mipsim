@@ -175,16 +175,39 @@ are optional.
  
 * addbp <start> [end] [mask] [type]
 --------------------------------------------------------------------------------
-
+ GDB equiv  : break
+ 
+ Create a breakpoint.
+ 
+ Breakpoint is hit when tested value V verifies :
+    start <= (V & mask) <= end
+    
+ Value being tested depends on the breakpoint type :
+ 
+   type |  value tested
+ ----------------------
+   memr | memory address passed to lb, lh, lw...
+   memw | memory address passed to sb, sh, sw...
+   memx | memory address of current instruciton (i.e PC)
+ opcode | current instruction
+ 
+ Defaults :
+   end  = start
+   mask = 0xFFFFFFFF
+   type = memx
+   
 
 * rmbp [id]
 --------------------------------------------------------------------------------
 
+ Remove a breakpoint when given a parameter, all breakpoints otherwise
+ 
  
 * dbp [id]
 --------------------------------------------------------------------------------
 
-
+ Display information about a breakpoint when given a parameter, about all
+ breakpoints otherwise
  
 
 Limitations
