@@ -27,9 +27,58 @@ typedef struct _Shell_Env {
 
 uint32_t symbol_value(const char *n, void *d, int *error)
 {
-    Shell_Env *e = (Shell_Env*)d;
+    if ( n == NULL )
+    {
+        if ( error != NULL )
+            *error = E_INVALID;
+        return 0;
+    }
     
-    return 0;
+    Shell_Env *e = (Shell_Env*)d;
+    MIPS *m = e->m;
+    ELF_File *f = e->f;
+    
+    if ( error != NULL )
+        *error = E_NONE;
+    
+    int found = 0;
+    int deref = 0;
+    uint32_t value = 0;
+    
+    while ( *n == '@' )
+    {
+        ++deref;
+        ++n;
+    }
+    
+    if ( m != NULL )
+    {
+        int id = mips_reg_id(n);
+        
+        if ( id != INVALID_REG )
+        {
+            value = mips_get_reg(m, id);
+            found = 1;
+        }
+    }
+    
+    if ( !found && f != NULL )
+    {
+        // TODO : symbol lookup
+    }
+    
+    if ( !found )
+    {
+        if ( error != NULL )
+            *error = E_UNDEFINED;
+        
+        return 0;
+    }
+    
+    while ( deref-- )
+        value = mips_read_w(m, value, NULL);
+    
+    return value;
 }
 
 typedef int (*command_handler)(int argc, char **argv, Shell_Env *e);
@@ -327,11 +376,15 @@ const char* find_symbol(MIPS_Addr org, MIPS_Addr val, void *d)
     
     // TODO : use relocation information when available to avoid ambiguities ?
     
-    MIPS *m = e->m;
     ELF_File *elf = e->f;
+    
+    if ( elf == NULL )
+        return NULL;
     
     int stat;
     const char *s = elf_symbol_name(elf, val, &stat);
+    
+    // TODO : on failure look for neighbouring symbols and add offsets...
     
     return s;
 }
@@ -341,8 +394,6 @@ int shell_dasm(int argc, char **argv, Shell_Env *e)
     MIPS *m = e->m;
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
-    
-    MIPSIM_Config *cfg = mipsim_config();
     
     int error = 0;
     MIPS_Addr start, end;
@@ -677,14 +728,19 @@ int shell_rmbp(int argc, char **argv, Shell_Env *e)
     return COMMAND_OK;
 }
 
-void dbp(BreakpointList *l)
+
+void dbp(Breakpoint *b)
+{
+    printf("%4d  0x%08x  0x%08x  0x%08x\n", b->id, b->start, b->end, b->mask);
+}
+
+void dbpl(BreakpointList *l)
 {
     if ( l == NULL )
         return;
     
-    dbp(l->next);
-    
-    printf("%4d  0x%08x  0x%08x  0x%08x\n", l->d.id, l->d.start, l->d.end, l->d.mask);
+    dbpl(l->next);
+    dbp (&l->d);
 }
 
 int shell_dbp(int argc, char **argv, Shell_Env *e)
@@ -693,12 +749,39 @@ int shell_dbp(int argc, char **argv, Shell_Env *e)
     if ( m == NULL )
         return COMMAND_NEED_TARGET;
     
-    printf("----------------------------------------\n");
-    printf("  ID     start        end        mask   \n");
-    printf("----------------------------------------\n");
-    dbp(m->breakpoints);
-    printf("----------------------------------------\n");
+    if ( argc > 2 )
+    {
+        printf("dbp [id]\n");
+        return COMMAND_PARAM_COUNT;
+    }
     
+    if ( argc == 2 )
+    {
+        int error;
+        int id = eval_expr(argv[1], symbol_value, e, &error);
+        
+        if ( error )
+        {
+            printf("Invalid [id] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+        
+        Breakpoint *b = mips_breakpoint(m, id);
+        
+        if ( b == NULL )
+        {
+            printf("No breakpoint with id=%d\n", id);
+            return COMMAND_FAIL;
+        }
+        
+        dbp(b);
+    } else {
+        printf("----------------------------------------\n");
+        printf("  ID     start        end        mask   \n");
+        printf("----------------------------------------\n");
+        dbpl(m->breakpoints);
+        printf("----------------------------------------\n");
+    }
     return COMMAND_OK;
 }
 
