@@ -252,3 +252,4 @@ can without any effort to "harmonize" the time spent on each opcode...
 
 MIPSim does not emulate any peripheral. Minimal I/O is supported via a few
 syscalls and a hackish emulation of IDT/PMON monitors.
+
