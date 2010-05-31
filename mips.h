@@ -269,6 +269,7 @@ enum MIPS_Architecture {
     MIPS_V = MIPS_5
 };
 
+int mips_isa_id(const char* name);
 const char* mips_isa_name(int isa);
 
 int mips_reg_id(const char *name);

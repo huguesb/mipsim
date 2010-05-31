@@ -14,6 +14,8 @@
 #include "util.h"
 #include "decode.h"
 
+#include <string.h>
+
 extern void mips_init_memory(MIPS *m);
 extern void mips_init_processor(MIPS *m);
 extern void mips_init_coprocessor(MIPS *m, int n);
@@ -25,15 +27,37 @@ extern void mips_cleanup_coprocessor(MIPS_Coprocessor *hw);
 extern int mips_universal_decode(MIPS *m);
 
 static const char *mips_isa_names[] = {
-    "MIPS 1",
-    "MIPS 2",
-    "MIPS 3",
-    "MIPS 4",
-    "MIPS 5",
-    "MIPS 32",
-    "MIPS 32 R2",
-    "MIPS 64"
+    NULL,
+    "mips1",
+    "mips2",
+    "mips3",
+    "mips4",
+    "mips5",
+    "mips32",
+    "mips32r2",
+    "mips64",
+    "mips64r2"
 };
+
+/*!
+    \brief Give the verbose name of an ISA version
+*/
+int mips_isa_id(const char* name)
+{
+    for ( int i = MIPS_ARCH_FIRST; i < MIPS_ARCH_LAST; ++i )
+    {
+        const char *isa = mips_isa_names[i];
+        
+        // allow "MIPS" ommision
+        if ( *name != 'm' )
+            isa += 4;
+        
+        if ( !strcmp(isa, name) )
+            return i;
+    }
+    
+    return MIPS_ARCH_NONE;
+}
 
 /*!
     \brief Give the verbose name of an ISA version
@@ -105,7 +129,7 @@ int mips_reg_id(const char *name)
         // simple atoi from reg number
         
         int error;
-        char *end;
+        const char *end;
         int id = str_to_num(name, &end, &error);
         
         if ( !*end && !error && id < 32 )

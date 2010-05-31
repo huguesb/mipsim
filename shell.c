@@ -128,26 +128,38 @@ typedef struct _Command {
 
 int shell_load(int argc, char **argv, Shell_Env *e)
 {
-    if ( argc != 2 )
+    if ( argc < 2 || argc > 3 )
         return COMMAND_PARAM_COUNT;
+    
+    int arch = mipsim_config()->arch;
+    
+    if ( argc == 3 )
+    {
+        arch = mips_isa_id(argv[2]);
+        
+        if ( arch == MIPS_ARCH_NONE )
+        {
+            printf("Invalid [arch] parameter\n");
+            return COMMAND_PARAM_TYPE;
+        }
+    }
     
     if ( e->m != NULL )
     {
         /*
-            Create simulator structures
-            TODO : specify arch via a command line switch and alter if needed...
+            Reset simulator structures
         */
         mips_reset(e->m);
+        e->m->architecture = arch;
     } else {
         /*
             Create simulator structures
-            TODO : specify arch via a command line switch...
         */
-        e->m = mips_create(mipsim_config()->arch);
+        e->m = mips_create(arch);
         
         if ( e->m == NULL )
         {
-            printf("MIPSim: Failed to allocate memory for MIPS machine\n");
+            printf("Failed to allocate memory for MIPS machine\n");
             return COMMAND_FAIL;
         }
     }
@@ -165,7 +177,7 @@ int shell_load(int argc, char **argv, Shell_Env *e)
     
     if ( e->f == NULL )
     {
-        printf("MIPSim: Failed to allocate memory for ELF file\n");
+        printf("Failed to allocate memory for ELF file\n");
         return COMMAND_FAIL;
     }
     
@@ -173,12 +185,19 @@ int shell_load(int argc, char **argv, Shell_Env *e)
         Load ELF file
     */
     if ( elf_file_load(e->f, argv[1]) )
+    {
+        printf("Invalid <filepath> parameter\n");
         return COMMAND_FAIL;
+    }
     
     /*
         Map ELF file content to emulated machine memory
     */
-    mips_load_elf(e->m, e->f);
+    if ( mips_load_elf(e->m, e->f) )
+    {
+        printf("Invalid <filepath> parameter\n");
+        return COMMAND_FAIL;
+    }
     
     return COMMAND_OK;
 }
