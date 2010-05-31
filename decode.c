@@ -1060,10 +1060,13 @@ int decode_add     (MIPS *m, uint32_t ir)
     int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     int32_t sum = rs + rt;
     
-    if ( !(ir & 0x00000001) && (sum < rs || sum < rt) )
+    int overflow = (((rs >> 31) & 1) + ((rt >> 31) & 1) + (((rs >> 31) ^ (rt >> 31) ^ (sum >> 31)) & 1)) >> 1;
+    
+    if ( !(ir & 0x00000001) && overflow )
     {
         // integer overflow exception...
-        mipsim_printf(IO_WARNING, "overflow...\n");
+        mipsim_printf(IO_WARNING, "integer overflow...\n");
+        mips_stop(m, MIPS_EXCEPTION);
         return MIPS_EXCEPTION;
     }
     
@@ -1078,10 +1081,13 @@ int decode_sub     (MIPS *m, uint32_t ir)
     int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     int32_t diff = rs - rt;
     
-    if ( !(ir & 0x00000001) && (diff > rs) )
+    int overflow = (((rs >> 31) & 1) - ((rt >> 31) & 1) - (((rs >> 31) ^ (rt >> 31) ^ (diff >> 31)) & 1)) >> 31;
+    
+    if ( !(ir & 0x00000001) && overflow )
     {
         // integer overflow exception...
-        mipsim_printf(IO_WARNING, "overflow...\n");
+        mipsim_printf(IO_WARNING, "integer overflow...\n");
+        mips_stop(m, MIPS_EXCEPTION);
         return MIPS_EXCEPTION;
     }
     
@@ -1214,7 +1220,9 @@ int decode_addi    (MIPS *m, uint32_t ir)
     int32_t rt = (int16_t)(ir & IMM_MASK);
     int32_t sum = rs + rt;
     
-    if ( !(ir & 0x04000000) && (sum < rs || sum < rt) )
+    int overflow = (((rs >> 31) & 1) + ((rt >> 31) & 1) + (((rs >> 31) ^ (rt >> 31) ^ (sum >> 31)) & 1)) >> 1;
+    
+    if ( !(ir & 0x04000000) && overflow )
     {
         // integer overflow exception...
         mipsim_printf(IO_WARNING, "overflow...\n");
