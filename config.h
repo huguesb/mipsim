@@ -16,6 +16,8 @@
 
 typedef struct _MIPSIM_Config {
     int io_mask;
+    FILE *mon_in;
+    FILE *mon_out;
     FILE *trace_log;
     FILE *debug_log;
     
@@ -23,6 +25,7 @@ typedef struct _MIPSIM_Config {
     
     uint32_t reloc_text, reloc_data;
     
+    int zero_sp;
     uint32_t phys_memory_size;
     uint32_t newlib_stack_size;
 } MIPSIM_Config;

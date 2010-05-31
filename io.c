@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 
 /*!
@@ -21,6 +22,7 @@
 */
 int mipsim_open (int cxt, const char *path, int flags)
 {
+    printf("Unexpected gateway open\n");
     return 0; //open(path, flags);
 }
 
@@ -29,14 +31,23 @@ int mipsim_open (int cxt, const char *path, int flags)
 */
 int mipsim_read (int cxt, int file, char *d, int len)
 {
-    if ( cxt == IO_MONITOR && file == 0 )
+    if ( cxt == IO_MONITOR )
     {
-        return read(0, d, len);
+        if ( file == 0 )
+        {
+            char *ret = fgets(d, len, mipsim_config()->mon_in);
+            
+            // remove extra LF
+            d[strlen(d) < len ? strlen(d) : len - 1] = 0;
+            
+            return ret != NULL;
+        } else {
+            printf("Unexpected monitor read on fd %d\n", file);
+        }
     } else {
-        printf("Damn I/O!");
+        printf("Unexpected gateway read\n");
     }
     
-    //int ret = fread(d, sizeof(char), len, stdin);
     return 0;
 }
 
@@ -47,11 +58,11 @@ int mipsim_write(int cxt, int file, char *d, int len)
 {
     if ( cxt == IO_MONITOR )
     {
-        int ret = fwrite(d, sizeof(char), len, stdout);
-        fflush(stdout);
+        int ret = fwrite(d, sizeof(char), len, mipsim_config()->mon_out);
+        fflush(mipsim_config()->mon_out);
         return ret;
     } else {
-        printf("Damn I/O!");
+        printf("Unexpected gateway write\n");
     }
     
     return 0;
@@ -62,6 +73,14 @@ int mipsim_write(int cxt, int file, char *d, int len)
 */
 int mipsim_close(int cxt, int file)
 {
+    if ( cxt == IO_MONITOR )
+    {
+        if ( file < 0 || file > 3 )
+            printf("Unexpected monitor close\n");
+    } else {
+        printf("Unexpected gateway close\n");
+    }
+    
     return 0; //close(file);
 }
 
@@ -70,7 +89,14 @@ int mipsim_close(int cxt, int file)
 */
 char mipsim_inbyte (int cxt)
 {
-    return fgetc(stdin);
+    if ( cxt == IO_MONITOR )
+    {
+        return fgetc(mipsim_config()->mon_in);
+    } else {
+        printf("Unexpected gateway inbyte\n");
+    }
+    
+    return 0;
 }
 
 /*!
@@ -78,7 +104,12 @@ char mipsim_inbyte (int cxt)
 */
 void mipsim_outbyte(int cxt, char c)
 {
-//     putc(c);
+    if ( cxt == IO_MONITOR )
+    {
+        fputc(c, mipsim_config()->mon_in);
+    } else {
+        printf("Unexpected gateway outbyte\n");
+    }
 }
 
 /*!
@@ -99,6 +130,9 @@ int mipsim_printf(int cxt, const char *fmt, ...)
     
     switch ( cxt )
     {
+        case IO_MONITOR :
+            vfprintf(cfg->mon_out, fmt, args);
+            
         case IO_TRACE :
             if ( cfg->io_mask & IO_TRACE )
                 ret = cfg->trace_log != NULL ? vfprintf(cfg->trace_log, fmt, args) : vprintf(fmt, args);

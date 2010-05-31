@@ -11,6 +11,7 @@
 #include "monitor.h"
 
 #include "io.h"
+#include "util.h"
 #include "config.h"
 
 /*!
@@ -31,6 +32,10 @@ char* fetch_str(MIPS *m, MIPS_Addr a)
     
     return s;
 }
+
+enum {
+    SYSCALL_BUF_SZ = 128
+};
 
 /*!
     \brief Syscall handler
@@ -59,7 +64,10 @@ int mips_syscall(MIPS *m, int code)
             
         case 5 :
         {
+            char buf[SYSCALL_BUF_SZ];
+            mipsim_read(IO_MONITOR, 0, buf, SYSCALL_BUF_SZ);
             
+            mips_set_reg(m, V0, str_to_num(buf, NULL, NULL));
             break;
         }
             
@@ -186,8 +194,8 @@ int mips_monitor(MIPS *m, int entry)
             /* void _exit() */
             
             mipsim_printf(IO_TRACE, "_exit");
-            
-            break;
+            mips_stop(m, MIPS_QUIT);
+            return MIPS_QUIT;
             
         case 110 :
         {
@@ -201,9 +209,6 @@ int mips_monitor(MIPS *m, int entry)
             
             mipsim_printf(IO_TRACE, "get_mem_info : 0x%08x", a);
             
-            // hardcoded mem info
-            // see memory.c:mips_init_memory() for more details
-            // without this newlib CRT goes nuts...
             mips_write_w(m, a + 0, cfg->newlib_stack_size, NULL);
             mips_write_w(m, a + 4, 0, NULL);
             mips_write_w(m, a + 8, 0, NULL);

@@ -38,6 +38,8 @@ int mipsim_config_init(int argc, char **argv)
     MIPSIM_Config *cfg = mipsim_config();
     
     cfg->io_mask = 0;
+    cfg->mon_in = stdin;
+    cfg->mon_out = stdout;
     cfg->trace_log = NULL;
     cfg->debug_log = NULL;
     
@@ -46,6 +48,7 @@ int mipsim_config_init(int argc, char **argv)
     cfg->reloc_text  = 0x00400000;
     cfg->reloc_data  = 0xFFFFFFFF;
     
+    cfg->zero_sp = 0;
     cfg->phys_memory_size  = 0x00100000;
     cfg->newlib_stack_size = 0x00800000;
     
@@ -64,6 +67,9 @@ int mipsim_config_init(int argc, char **argv)
         } else if ( !strcmp(arg, "--trace") ) {
             *argv[i] = 0;
             cfg->io_mask |= IO_TRACE;
+        } else if ( !strcmp(arg, "--zero-sp") ) {
+            *argv[i] = 0;
+            cfg->zero_sp = 1;
         } else if ( !strcmp(arg, "--debug-log") ) {
             *argv[i] = 0;
             if ( i+1 < argc )
@@ -162,6 +168,16 @@ int mipsim_config_init(int argc, char **argv)
 int mipsim_config_fini()
 {
     MIPSIM_Config *cfg = mipsim_config();
+    
+    if ( cfg->mon_in != stdin )
+    {
+        fclose(cfg->mon_in);
+    }
+    
+    if ( cfg->mon_out != stdout )
+    {
+        fclose(cfg->mon_out);
+    }
     
     if ( cfg->trace_log != NULL )
     {

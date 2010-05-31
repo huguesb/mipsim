@@ -263,6 +263,10 @@ void print_status(MIPS *m)
             printf("Break\n");
             break;
             
+        case MIPS_QUIT :
+            printf("Quit\n");
+            break;
+            
         case MIPS_BKPT :
             printf("Hit breakpoint %d\n", m->breakpoint_hit);
             break;
@@ -831,6 +835,10 @@ int shell_dbp(int argc, char **argv, Shell_Env *e)
 
 int shell_mmap(int argc, char **argv, Shell_Env *e)
 {
+    MIPS *m = e->m;
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
     MIPS_Memory *mem = &e->m->mem;
     if ( argc == 1 )
     {
@@ -880,6 +888,22 @@ int shell_mmap(int argc, char **argv, Shell_Env *e)
     } else {
         return COMMAND_PARAM_COUNT;
     }
+    
+    return COMMAND_OK;
+}
+
+int shell_status(int argc, char **argv, Shell_Env *e)
+{
+    MIPS *m = e->m;
+    if ( m == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    (void)argv;
+    
+    if ( argc != 1 )
+        return COMMAND_PARAM_COUNT;
+    
+    print_status(m);
     
     return COMMAND_OK;
 }
@@ -985,6 +1009,8 @@ static const Command commands[] = {
         " discouraged.\n"
         "\n"
         " Default flags value is w.\n"},
+    {"status",  NULL, shell_status, "",
+        " Show target status"},
     {"quit",  "q",  shell_quit,     "",
         " Quit MIPSim"},
     {"exit",  NULL, shell_quit,     "",
