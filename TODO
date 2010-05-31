@@ -1,8 +1,4 @@
 
-TODO :
- * document everything
- * use a binary tree for memory mappings ?
- 
  * Coprocessor support
     - model somewhat accurately control regs of cp1 (and cp0 ???)
     - exception handling
@@ -26,11 +22,11 @@ TODO :
 
 
 Priorities :
-    * tests
-    * automated tester
+    * more tests, more complex tests
+    * automated tester : I/O redirection
 
 Goodies :
-    * sort memory mappings by priority
+    * sort memory mappings by priority to improve simulator speed
 
 Extras:
     * proper exceptions
