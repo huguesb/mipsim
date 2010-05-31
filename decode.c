@@ -89,6 +89,15 @@ int decode_ctc     (MIPS *m, uint32_t ir);
 int decode_bc1     (MIPS *m, uint32_t ir);
 int decode_fpu     (MIPS *m, uint32_t ir);
 
+int decode_mul     (MIPS *m, uint32_t ir);
+int decode_madd    (MIPS *m, uint32_t ir);
+int decode_maddu   (MIPS *m, uint32_t ir);
+int decode_msub    (MIPS *m, uint32_t ir);
+int decode_msubu   (MIPS *m, uint32_t ir);
+
+int decode_clz     (MIPS *m, uint32_t ir);
+int decode_clo     (MIPS *m, uint32_t ir);
+
 const MIPS_Instr Rinstr[64] = {
     {"sll",     "d, t, <", decode_shift,    ISA_from_1}, // 000000
     {NULL,      NULL,      NULL,            ISA_NONE},
@@ -158,12 +167,12 @@ const MIPS_Instr Rinstr[64] = {
 
 
 const MIPS_Instr Rinstr2[64] = {
-    {"madd",    "s, t",    decode_unknown,  ISA_from_32}, // 000000
-    {"maddu",   "s, t",    decode_unknown,  ISA_from_32},
-    {"mul",     "d, s, t", decode_unknown,  ISA_from_32},
-    {NULL,      NULL,      NULL          ,  ISA_NONE},
-    {"msub",    "s, t",    decode_unknown,  ISA_from_32},
-    {"musbu",   "s, t",    decode_unknown,  ISA_from_32},
+    {"madd",    "s, t",    decode_madd,     ISA_from_32}, // 000000
+    {"maddu",   "s, t",    decode_maddu,    ISA_from_32},
+    {"mul",     "d, s, t", decode_mul,      ISA_from_32},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {"msub",    "s, t",    decode_msub,     ISA_from_32},
+    {"msubu",   "s, t",    decode_msubu,    ISA_from_32},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
@@ -190,10 +199,10 @@ const MIPS_Instr Rinstr2[64] = {
     {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
-    {"clz",     "d, s",    decode_unknown,  ISA_from_32}, // 100000
-    {"clo",     "d, s",    decode_unknown,  ISA_from_32},
-    {NULL,      NULL,      NULL          ,  ISA_NONE},
-    {NULL,      NULL,      NULL          ,  ISA_NONE},
+    {"clz",     "d, s",    decode_clz,      ISA_from_32}, // 100000
+    {"clo",     "d, s",    decode_clo,      ISA_from_32},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
     {"dclz",    "d, s",    decode_unknown,  ISA_from_32},
     {"dclo",    "d, s",    decode_unknown,  ISA_from_32},
     {NULL,      NULL,      NULL,            ISA_NONE},
@@ -229,8 +238,8 @@ const MIPS_Instr Iinstr[32] = {
     {"bgez",    "s, p",    decode_bltz,     ISA_from_1},
     {"bltzl",   "s, p",    decode_bltz,     ISA_from_2},
     {"bgezl",   "s, p",    decode_bltz,     ISA_from_2},
-    {"",    "",    decode_unknown,  ISA_NONE},
-    {"",    "",    decode_unknown,  ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
+    {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
     {NULL,      NULL,      NULL,            ISA_NONE},
@@ -1127,8 +1136,15 @@ int decode_div     (MIPS *m, uint32_t ir)
     int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
     int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
-    m->hw.set_lo(&m->hw, rs / rt);
-    m->hw.set_hi(&m->hw, rs % rt);
+    if ( rt == 0 )
+    {
+        mipsim_printf(IO_WARNING, "Divide by zero\n");
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    } else {
+        m->hw.set_lo(&m->hw, rs / rt);
+        m->hw.set_hi(&m->hw, rs % rt);
+    }
     
     return MIPS_OK;
 }
@@ -1138,8 +1154,15 @@ int decode_divu    (MIPS *m, uint32_t ir)
     int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
     int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
     
-    m->hw.set_lo(&m->hw, s32_to_u32(rs) / s32_to_u32(rt));
-    m->hw.set_hi(&m->hw, s32_to_u32(rs) % s32_to_u32(rt));
+    if ( rt == 0 )
+    {
+        mipsim_printf(IO_WARNING, "Divide by zero\n");
+        mips_stop(m, MIPS_EXCEPTION);
+        return MIPS_EXCEPTION;
+    } else {
+        m->hw.set_lo(&m->hw, s32_to_u32(rs) / s32_to_u32(rt));
+        m->hw.set_hi(&m->hw, s32_to_u32(rs) % s32_to_u32(rt));
+    }
     
     return MIPS_OK;
 }
@@ -1628,6 +1651,110 @@ int decode_trap    (MIPS *m, uint32_t ir)
     return MIPS_TRAP;
 }
 
+int decode_mul     (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    
+    int64_t prod = rs * rt;
+    
+    m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, (int32_t)(prod & 0x00000000FFFFFFFFL));
+    
+    // TODO : mark HI/LO as unpredictable
+    
+    return MIPS_OK;
+}
+
+int decode_madd    (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    
+    int64_t prod = rs * rt;
+    
+    m->hw.set_lo(&m->hw, (int32_t)(prod & 0x00000000FFFFFFFFL) + m->hw.get_lo(&m->hw));
+    m->hw.set_hi(&m->hw, (prod >> 32) + m->hw.get_hi(&m->hw));
+    
+    return MIPS_OK;
+}
+
+int decode_maddu    (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    
+    uint64_t prod = s32_to_u32(rs) * s32_to_u32(rt);
+    
+    m->hw.set_lo(&m->hw, (prod & 0x00000000FFFFFFFFL) + s32_to_u32(m->hw.get_lo(&m->hw)));
+    m->hw.set_hi(&m->hw, (prod >> 32) + s32_to_u32(m->hw.get_hi(&m->hw)));
+    
+    return MIPS_OK;
+}
+
+int decode_msub    (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    
+    int64_t prod = rs * rt;
+    
+    m->hw.set_lo(&m->hw, (int32_t)(prod & 0x00000000FFFFFFFFL) - m->hw.get_lo(&m->hw));
+    m->hw.set_hi(&m->hw, (prod >> 32) - m->hw.get_hi(&m->hw));
+    
+    return MIPS_OK;
+}
+
+int decode_msubu   (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    int32_t rt = m->hw.get_reg(&m->hw, (ir & RT_MASK) >> RT_SHIFT);
+    
+    uint64_t prod = s32_to_u32(rs) * s32_to_u32(rt);
+    
+    m->hw.set_lo(&m->hw, (prod & 0x00000000FFFFFFFFL) - s32_to_u32(m->hw.get_lo(&m->hw)));
+    m->hw.set_hi(&m->hw, (prod >> 32) - s32_to_u32(m->hw.get_hi(&m->hw)));
+    
+    return MIPS_OK;
+}
+
+int decode_clz     (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    
+    int n = 0;
+    
+    while ( n < 32 )
+    {
+        if ( rs & 0x80000000 )
+            break;
+        
+        rs <<= 1;
+        ++n;
+    }
+    
+    m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, n);
+    return MIPS_OK;
+}
+
+int decode_clo     (MIPS *m, uint32_t ir)
+{
+    int32_t rs = m->hw.get_reg(&m->hw, (ir & RS_MASK) >> RS_SHIFT);
+    
+    int n = 0;
+    
+    while ( n < 32 )
+    {
+        if ( !(rs & 0x80000000) )
+            break;
+        
+        rs <<= 1;
+        ++n;
+    }
+    
+    m->hw.set_reg(&m->hw, (ir & RD_MASK) >> RD_SHIFT, n);
+    return MIPS_OK;
+}
+
 int decode_cp0     (MIPS *m, uint32_t ir)
 {
     MIPS_Instr i = cp0[(ir & FMT_MASK) >> FMT_SHIFT];
@@ -1680,14 +1807,14 @@ int decode_cp2     (MIPS *m, uint32_t ir)
 {
     (void)m; (void)ir;
     mipsim_printf(IO_TRACE, "cop 2\n");
-    return MIPS_OK;
+    return MIPS_UNSUPPORTED;
 }
 
 int decode_cp3     (MIPS *m, uint32_t ir)
 {
     (void)m; (void)ir;
     mipsim_printf(IO_TRACE, "cop 3\n");
-    return MIPS_OK;
+    return MIPS_UNSUPPORTED;
 }
 
 int decode_lwc      (MIPS *m, uint32_t ir)
