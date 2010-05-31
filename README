@@ -26,6 +26,10 @@ available by default on most *Nixes but might be more difficult to obtain
 under Windows...
 
 
+A special Makefile (adapted from qmake-generated one) is provided to build
+under telsun.
+
+
 Usage
 -----
 
@@ -35,11 +39,24 @@ Options :
   -t addr            : specify base address of text section (for relocation)
   -d addr            : specify base address of data section (for relocation)
   -s size            : specify maximum amount of memory available to simulator
+  -nss size          : specify maximum amount of GCC/newlib stack space
   --debug            : enable debug output
   --debug-log file   : specify file in which to redirect debug output
   --trace            : enable trace output (can be toggled on off in shell)
   --trace-log file   : specify file in which to redirect trace output
   --version          : display version and exit
+
+
+Note on name :
+  The name simips has been enforced by project specs after the original skeleton
+was written and renaming beyond executable name wasn't considered worth the effort.
+
+Note on s & nss :
+  For practical reasons s and nss are independent, therefore the total amount
+of physical adress space available to the simulator is the sum of both. Also
+note that the nss parameter is only take into account when loading executables
+because, as MIPSim does not perform symbol resolution (i.e linking), relocatables
+object that depend on newlib cannot be run in MIPSim.
 
 
 Documentation
@@ -66,7 +83,7 @@ IMPORTANT : parameter splitting is strict. If you want to use whitspaces in
 mathematical expressions for readability, double-quote the parameter.
 
 
-* load <filepath>
+* load <filepath> [isa]
 --------------------------------------------------------------------------------
  Short-hand : l
  
@@ -75,6 +92,23 @@ mathematical expressions for readability, double-quote the parameter.
  the start of the .text section.
  
  Note : binaries MAY NOT contain references to external symbols.
+ 
+ The optional isa parameter indicate which version of the MIPS instruction set
+ should be allowed in the simulator. Valid values are :
+    mips1
+    mips2
+    mips3
+    mips4
+    mips5
+    mips32
+    mips64
+    mips32r2
+    mips64r2
+ 
+ The "mips" prefix can be ommitted.
+ 
+ Please not that while all values are accepted not all ISA are properly simulated
+ yet. In particular there is no FPU and 64 bit support at all...
 
 
 * run [address]

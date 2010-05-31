@@ -31,7 +31,6 @@ Priorities :
     * automated tester
 
 Goodies :
-    * polish expr eval
     * sort memory mappings by priority
     * architecture selection
 
