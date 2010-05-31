@@ -887,25 +887,111 @@ int shell_mmap(int argc, char **argv, Shell_Env *e)
 int shell_help(int argc, char **argv, Shell_Env *e);
 
 static const Command commands[] = {
-    {"load",  "l",  shell_load,     "<filepath>", ""},
-    {"print", "p",  shell_print,    "<expr>+", ""},
-    {"dasm",  NULL, shell_dasm,     "[start] [end]", ""},
-    {"dreg",  NULL, shell_dreg,     "<reg>", ""},
-    {"sreg",  NULL, shell_sreg,     "<reg> <value>", ""},
-    {"dmem",  NULL, shell_dmem,     "<start> <end>", ""},
-    {"smem",  NULL, shell_smem,     "<address> <value> [bytecount]", ""},
-    {"run",   "r",  shell_run,      "[address]", ""},
-    {"step",  "s",  shell_step,     "[count]", ""},
-    {"stepi", "si", shell_stepi,    "[count]", ""},
-    {"addbp", NULL, shell_addbp,    "<start> [end] [mask] [type]", ""},
-    {"rmbp",  NULL, shell_rmbp,     "[id]", ""},
-    {"dbp",   NULL, shell_dbp,      "[id]", ""},
-    {"dump",  "d",  shell_dump,     "", ""},
-    {"trace", "t",  shell_trace,    "[1 | 0]", ""},
-    {"mmap",  NULL, shell_mmap,     "[address] [size] [flags]", ""},
-    {"quit",  "q",  shell_quit,     "", ""},
-    {"exit",  NULL, shell_quit,     "", ""},
-    {"help",  "h",  shell_help,     "", ""},
+    {"load",  "l",  shell_load,     "<filepath>",
+        " Loads an ELF binary (executable or relocatable) and map it into the memory of\n"
+        " the simulated  machine. PC is moved to the entry point or, if none exists, to\n"
+        " the start of the .text section.\n"
+        "\n"
+        " Note : binaries MAY NOT contain references to external symbols.\n"
+        "\n"
+        " The optional isa parameter indicate which version of the MIPS instruction set\n"
+        " should be allowed in the simulator. Valid values are :\n"
+        "    mips1\n"
+        "    mips2\n"
+        "    mips3\n"
+        "    mips4\n"
+        "    mips5\n"
+        "    mips32\n"
+        "    mips64\n"
+        "    mips32r2\n"
+        "    mips64r2\n"
+        "\n"
+        " The \"mips\" prefix can be ommitted.\n"
+        "\n"
+        " Please note that, while all values are accepted, not all ISA are properly\n"
+        " simulated yet. In particular there is no FPU and 64 bit support at all...\n"},
+    {"print", "p",  shell_print,    "<expr>+",
+        "Evaluate any number of expressions and print the results.\n"},
+    {"dasm",  NULL, shell_dasm,     "[start] [end]",
+        " Disassemble memory. Non-executable memory will be disassembled as .word\n"
+        " directives.\n"
+        " \n"
+        " If no start parameter is provided the whole .text section will be disasembled.\n"
+        " If only the start parameter is provided, end will default to start (only one\n"
+        " instruction will  be shown).\n"},
+    {"dreg",  NULL, shell_dreg,     "<reg>",
+        " Display the content of a register. The parameter can be a register number or a\n"
+        " mnemonic, with or without a $ prefix. Using mnemonic, one can access the\n"
+        " contents of PC, HI, LO and coprocessor registers.\n"},
+    {"sreg",  NULL, shell_sreg,     "<reg> <value>",
+        " Set the content of a register. The parameter can be a register number or a\n"
+        " mnemonic, with or without a $ prefix. Using mnemonic, one can access the\n"
+        " contents of PC, HI, LO and coprocessor registers.\n"},
+    {"dmem",  NULL, shell_dmem,     "<start> <end>",
+        " Display the content of memory region delimited by start and end parameters. If\n"
+        " not provided, end default to start + 3*16\n"},
+    {"smem",  NULL, shell_smem,     "<address> <value> [bytecount]",
+        " Set the content of a memory cell. If value is larger than a byte, a valid\n"
+        " bytecount parameter must be provided. Bytecount can be either 1, 2 or 4.\n"},
+    {"run",   "r",  shell_run,      "[address]",
+        " Resume the execution of the simulated machine from the supplied address (from\n"
+        " the current  value of the PC by default)\n"},
+    {"step",  "s",  shell_step,     "[count]",
+        " Executes [count] instructions (default is 1). A branch and its delay slot are\n"
+        " considered as a  single instruction.\n"
+        "\n"
+        " A procedure call and all the subsequent instructions until procedure return are\n"
+        " considered as  a single instruction.\n"},
+    {"stepi", "si", shell_stepi,    "[count]",
+        " Executes [count] instructions (default is 1). A branch and its delay slot are\n"
+        " considered as a single instruction.\n"},
+    {"addbp", NULL, shell_addbp,    "<start> [end] [mask] [type]",
+        " Create a breakpoint.\n"
+        "\n"
+        " Breakpoint is hit when tested value V verifies :\n"
+        "    start <= (V & mask) <= end\n"
+        "\n"
+        " Value being tested depends on the breakpoint type :\n"
+        "\n"
+        "   type |  value tested\n"
+        " ----------------------\n"
+        "   memr | memory address passed to lb, lh, lw...\n"
+        "   memw | memory address passed to sb, sh, sw...\n"
+        "   memx | memory address of current instruciton (i.e PC)\n"
+        " opcode | current instruction\n"
+        "\n"
+        " Defaults :\n"
+        "   end  = start\n"
+        "   mask = 0xFFFFFFFF\n"
+        "   type = memx\n"},
+    {"rmbp",  NULL, shell_rmbp,     "[id]",
+        " Remove a breakpoint when given a parameter, all breakpoints otherwise\n"},
+    {"dbp",   NULL, shell_dbp,      "[id]",
+        " Display information about a breakpoint when given a parameter, about all\n"
+        " breakpoints otherwise\n"},
+    {"dump",  "d",  shell_dump,     "",
+        " Dump informations about all processor registers.\n"},
+    {"trace", "t",  shell_trace,    "[1 | 0]",
+        " Toggle trace output.\n"},
+    {"mmap",  NULL, shell_mmap,     "[address] [size] [flags]",
+        " When invoked without parameters, display all memory mappings of the simulated\n"
+        " machine, Otherwise create a new mapping.\n"
+        "\n"
+        " Mappings MAY NOT overlap.\n"
+        "\n"
+        " Default size value is the amount of memory needed to reach next page boundary.\n"
+        "\n"
+        " Flags is in {w, x, wx}. wx is accepted as an alias to wx but its use is\n"
+        " discouraged.\n"
+        "\n"
+        " Default flags value is w.\n"},
+    {"quit",  "q",  shell_quit,     "",
+        " Quit MIPSim"},
+    {"exit",  NULL, shell_quit,     "",
+        " Quit MIPSim"},
+    {"help",  "h",  shell_help,     "",
+        " Display a list of supported commands if no parameter passed. Display command\n"
+        " specific help  when given a parameter.\n"},
     {NULL, NULL, NULL, NULL, NULL}
 };
 
@@ -913,7 +999,7 @@ int shell_help(int argc, char **argv, Shell_Env *e)
 {
     (void)e;
     
-    if ( argc > 1 )
+    if ( argc == 2 )
     {
         const Command *c = commands;
         
@@ -921,13 +1007,22 @@ int shell_help(int argc, char **argv, Shell_Env *e)
         {
             if ( !strcmp(c->name, argv[1]) )
             {
-                printf("%s %s\n%s", c->name, c->params, c->help);
+                printf("%s %s\n"
+                       "--------------------------------------------------------------------------------\n"
+                        "%s",
+                       c->name, c->params, c->help);
                 break;
             }
             
             ++c;
         }
-    } else {
+        
+        if ( c->name == NULL )
+        {
+            printf("Unrecognized command : %s\n", argv[1]);
+            return COMMAND_PARAM_TYPE;
+        }
+    } else if ( argc == 1 ){
         printf("Supported commands :\n");
 
         const Command *c = commands;
@@ -946,6 +1041,8 @@ int shell_help(int argc, char **argv, Shell_Env *e)
         }
         
         printf("\ntype : \"help\" followed by a command name for specific help.\n");
+    } else {
+        return COMMAND_PARAM_COUNT;
     }
     
     return COMMAND_OK;

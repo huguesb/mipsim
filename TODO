@@ -26,13 +26,11 @@ TODO :
 
 
 Priorities :
-    * documentation
     * tests
     * automated tester
 
 Goodies :
     * sort memory mappings by priority
-    * architecture selection
 
 Extras:
     * proper exceptions
