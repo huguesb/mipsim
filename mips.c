@@ -132,7 +132,7 @@ int mips_reg_id(const char *name)
         const char *end;
         int id = str_to_num(name, &end, &error);
         
-        if ( !*end && !error && id < 32 )
+        if ( !*end && !error && id >= 0 && id < 32 )
             return id;
         
     } else if ( is_letter(*name) ) {
