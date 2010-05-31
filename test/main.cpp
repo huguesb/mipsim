@@ -101,29 +101,38 @@ bool at_prompt[TARGET_COUNT];
 
 QByteArray command(int target, const QByteArray& command)
 {
-    QByteArray tmp;
+    QByteArray ans;
     QProcess *p = sim[target];
     const QByteArray& prompt = prompts[target];
     
     while ( !at_prompt[target] )
     {
-        p->waitForReadyRead(-1);
-        tmp += p->readAll();
+        p->waitForReadyRead();
+        ans += p->readAll();
         
-        at_prompt[target] = tmp.endsWith(prompt);
+        at_prompt[target] = ans.endsWith(prompt);
     }
     
-    //qDebug("%d> %s", target, qPrintable(command));
+    //qDebug("%d> %s", target, command.constData());
     
     p->write(command);
+    p->waitForBytesWritten();
     
-    QByteArray ans;
+    ans.clear();
     at_prompt[target] = false;
+    
+    bool chop_readline = true;
     
     while ( !at_prompt[target] && (p->state() == QProcess::Running) )
     {
-        p->waitForReadyRead(200);
+        p->waitForReadyRead();
         ans += p->readAll();
+        
+        if ( chop_readline && ans.startsWith(command) )
+        {
+            ans.remove(0, command.length());
+            chop_readline = false;
+        }
         
         if ( ans.endsWith(prompt) )
         {
@@ -204,16 +213,16 @@ quint32 hex_value(const char *d, int length, bool *ok)
     }
     
     do {
-        unsigned char c = *d - '0';
+        unsigned char c = *((unsigned char*)d);
         
-        if ( c > 9 ) {
-            c &= ~('a' - 'A');
-            c -=  ('A' - '0');
-            c += 10;
-            
-            if ( c > 15 )
-                return 0;
-        }
+        if ( c >= '0' && c <= '9' )
+            c -= '0';
+        else if ( c >= 'A' && c <= 'F' )
+            c += 10 - 'A';
+        else if  ( c >= 'a' && c <= 'f' )
+            c += 10 - 'a';
+        else
+            return 0;
         
         n <<= 4;
         n += c;
@@ -253,6 +262,8 @@ void update_register_file(int target)
                 
                 if ( !ok ) {
                     qWarning("(%i) borked reg dump : %i = %s", target, i, ans.mid(r_f, r_s).constData());
+                    qDebug() << ans << endl << ranges[target];
+                    exit(1);
                 } else {
                     ++n;
                     
@@ -277,6 +288,12 @@ void update_register_file(int target)
 
 int main(int argc, char **argv)
 {
+    if ( argc < 2 )
+    {
+        qDebug("usage : cmpsim <target> [max_branch_length]");
+        return 1;
+    }
+    
     QString target, ans;
     QProcess mipsim, gdb;
     
@@ -288,7 +305,7 @@ int main(int argc, char **argv)
     target = QString::fromLocal8Bit(argv[1]);
     
     mipsim.setProcessChannelMode(QProcess::MergedChannels);
-    mipsim.start("./simips", QStringList() << target);
+    mipsim.start("./simips", QStringList() << target << "--zero-sp");
     
     gdb.setProcessChannelMode(QProcess::MergedChannels);
     gdb.start("mips-elf-gdb", QStringList() << target << "--silent");
@@ -313,85 +330,117 @@ int main(int argc, char **argv)
     update_register_file(GDB);
     update_register_file(MIPSim);
     
-    while ( regs[GDB].pc < regs[MIPSim].pc )
+    //qDebug("Ready @ 0x%08x, 0x%08x", regs[GDB].pc, regs[MIPSim].pc);
+    
+    //print_register_file_diff(GDB, MIPSim);
+    
+    if ( regs[GDB].pc == 0xbfc00000 )
     {
-        command(GDB, "si\n");
-        update_register_file(GDB);
-    }
-    
-    while ( regs[MIPSim].pc < regs[GDB].pc )
-    {
-        command(MIPSim, "si\n");
-        update_register_file(MIPSim);
-    }
-    
-    qDebug("Starting @ 0x%08x, 0x%08x", regs[GDB].pc, regs[MIPSim].pc);
-    
-    int n = 0, diff_seq = 0;
-    const int max_diff_seq = QString::fromLocal8Bit(argv[2]).toUInt();
-    
-    forever
-    {
-        if ( command(GDB, "info program\n") == "The program being debugged is not being run.\n" )
+        qDebug("Unable to load target");
+    } else {
+        while ( regs[GDB].pc < regs[MIPSim].pc )
         {
-            qDebug("sim target stopped");
-            break;
+            command(GDB, "si\n");
+            update_register_file(GDB);
         }
         
-        if ( memcmp(&regs[GDB], &regs[MIPSim], sizeof(RegisterFile)) )
+        while ( regs[MIPSim].pc < regs[GDB].pc )
         {
-            if ( !diff_seq )
+            command(MIPSim, "si\n");
+            update_register_file(MIPSim);
+        }
+        
+        qDebug("Starting @ 0x%08x, 0x%08x", regs[GDB].pc, regs[MIPSim].pc);
+        
+        int n = 0, diff_seq = 0;
+        const int max_diff_seq = QString::fromLocal8Bit(argv[2]).toUInt();
+        
+        forever
+        {
+//             if ( !(n % 100) )
+//                qDebug("%d instructions executed", n);
+            
+            bool gdb_stop = false, mipsim_stop = false;
+            
+            if ( command(GDB, "info program\n") == "The program being debugged is not being run.\n" )
             {
-                // account for GDB maybe lagging one instruction behind
-                quint32 pc = regs[GDB].pc;
-                
-                if ( regs[MIPSim].pc - pc == 4 )
-                {
-                    command(GDB, "si\n");
-                    update_register_file(GDB);
-                    
-                    if ( memcmp(&regs[GDB], &regs[MIPSim], sizeof(RegisterFile)) )
-                    {
-                        qDebug("Simulations differ after %i instruction : ", n);
-                        qDebug(" @ 0x%08x, 0x%08x", pc, regs[MIPSim].pc);
-                        print_register_file_diff(GDB, MIPSim);
-                        
-                        ++n;
-                        ++diff_seq;
-                        
-                        command(MIPSim, "si\n");
-                        update_register_file(MIPSim);
-                        
-                        continue;
-                    } else {
-                        //qDebug("Corrected delay slot GDB lag @ 0x%08x", pc);
-                        continue;
-                    }
-                }
-                
-                qDebug("Simulations differ after %i instruction : ", n);
-                qDebug(" @ 0x%08x, 0x%08x", pc, regs[MIPSim].pc);
-                print_register_file_diff(GDB, MIPSim);
+                gdb_stop = true;
+                qDebug("[GDB] sim target stopped");
             }
             
-            if ( ++diff_seq >= max_diff_seq )
+            QByteArray stat = command(MIPSim, "status\n").trimmed();
+            
+            if ( stat.count() )
             {
-                qDebug("simulations not merged after %i steps : aborting...", diff_seq);
-                print_register_file_diff(GDB, MIPSim);
+                mipsim_stop = true;
+                qDebug("[MIPSim] sim target stopped : %s", stat.constData());
+            }
+            
+            if ( mipsim_stop || gdb_stop )
+            {
+                if ( !(mipsim_stop && gdb_stop) )
+                    qDebug("Only one of the simulator stopped...");
+                
                 break;
             }
-        } else if ( diff_seq ) {
-            qDebug("simulations merge back after %i steps", diff_seq);
-            diff_seq = 0;
+            
+            if ( memcmp(&regs[GDB], &regs[MIPSim], sizeof(RegisterFile)) )
+            {
+                if ( !diff_seq )
+                {
+                    // account for GDB maybe lagging one instruction behind
+                    quint32 pc = regs[GDB].pc;
+                    
+                    if ( regs[MIPSim].pc - pc == 4 )
+                    {
+                        command(GDB, "si\n");
+                        update_register_file(GDB);
+                        
+                        if ( memcmp(&regs[GDB], &regs[MIPSim], sizeof(RegisterFile)) )
+                        {
+                            qDebug("Simulations differ after %i instruction : ", n);
+                            qDebug(" @ 0x%08x, 0x%08x", pc, regs[MIPSim].pc);
+                            print_register_file_diff(GDB, MIPSim);
+                            
+                            ++n;
+                            ++diff_seq;
+                            
+                            command(MIPSim, "si\n");
+                            update_register_file(MIPSim);
+                            
+                            continue;
+                        } else {
+                            //qDebug("Corrected delay slot GDB lag @ 0x%08x", pc);
+                            continue;
+                        }
+                    }
+                    
+                    qDebug("Simulations differ after %i instruction : ", n);
+                    qDebug(" @ 0x%08x, 0x%08x", pc, regs[MIPSim].pc);
+                    print_register_file_diff(GDB, MIPSim);
+                }
+                
+                if ( ++diff_seq >= max_diff_seq )
+                {
+                    qDebug("simulations not merged after %i steps : aborting...", diff_seq);
+                    print_register_file_diff(GDB, MIPSim);
+                    break;
+                }
+            } else if ( diff_seq ) {
+                qDebug("simulations merge back after %i steps", diff_seq);
+                diff_seq = 0;
+            }
+            
+            command(MIPSim, "si\n");
+            update_register_file(MIPSim);
+            
+            command(GDB, "si\n");
+            update_register_file(GDB);
+            
+            ++n;
         }
         
-        command(MIPSim, "si\n");
-        update_register_file(MIPSim);
-        
-        command(GDB, "si\n");
-        update_register_file(GDB);
-        
-        ++n;
+        qDebug("Stopped after %d steps", n);
     }
     
     command(GDB, "q\ny\n");
