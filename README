@@ -40,6 +40,7 @@ Options :
   -d addr            : specify base address of data section (for relocation)
   -s size            : specify maximum amount of memory available to simulator
   -nss size          : specify maximum amount of GCC/newlib stack space
+  --zero-sp          : go against spec and let program set SP (newlib compat)
   --debug            : enable debug output
   --debug-log file   : specify file in which to redirect debug output
   --trace            : enable trace output (can be toggled on off in shell)
@@ -268,10 +269,17 @@ mathematical expressions for readability, double-quote the parameter.
  
  Default flags value is w.
 
+
 * print <expr>+
 --------------------------------------------------------------------------------
  
  Evaluate any number of expressions and print the results.
+
+
+* status
+--------------------------------------------------------------------------------
+ 
+ Display target status (i.e last stop reason if any).
 
 
 Limitations
@@ -290,4 +298,24 @@ can without any effort to "harmonize" the time spent on each opcode...
 
 MIPSim does not emulate any peripheral. Minimal I/O is supported via a few
 syscalls and a hackish emulation of IDT/PMON monitors.
+
+
+Tests
+-----
+
+MIPSim comes with a few test programs. Some are written in assembly, some in C,
+some in a mix of both (via GCC inline assembly). The code is in the demos/
+subfolder.
+
+MIPSim strives to achieve accurate simulation and to that end an automated test
+program has been written. It runs a target executable in both MIPSim and GDB in
+parallel and single step through the code, verifying after each instruction that
+there is no simulation divergence (by checking register contents). The source
+code of this tool lies in the test/ subfolder. It is written in C++ and depends
+on the Qt4 toolikt (only the core lib though, no GUI is provided). This tool has
+several important limitations :
+    * no I/O redirection of subprocesses (so cannot be used with test programs
+    waiting for user input)
+    * unpredictable behavior with newlib-free binaries (quite surprisingly, the
+    issue comes from GDB simulator which somehow fail to load/simulate these...)
 
