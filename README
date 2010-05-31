@@ -27,7 +27,9 @@ under Windows...
 
 
 A special Makefile (adapted from qmake-generated one) is provided to build
-under telsun.
+under telsun. The build command becomes :
+
+$ make -f Makefile.telesun
 
 
 Usage

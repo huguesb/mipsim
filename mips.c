@@ -20,7 +20,6 @@ extern void mips_init_memory(MIPS *m);
 extern void mips_init_processor(MIPS *m);
 extern void mips_init_coprocessor(MIPS *m, int n);
 
-//extern void mips_cleanup_memory(MIPS_Memory *mem);
 extern void mips_cleanup_processor(MIPS_Processor *hw);
 extern void mips_cleanup_coprocessor(MIPS_Coprocessor *hw);
 
@@ -40,7 +39,7 @@ static const char *mips_isa_names[] = {
 };
 
 /*!
-    \brief Give the verbose name of an ISA version
+    \brief Name<->id conversion for ISA version
 */
 int mips_isa_id(const char* name)
 {
