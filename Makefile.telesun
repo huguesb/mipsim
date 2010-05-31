@@ -15,8 +15,9 @@ CFLAGS        = -pipe -std=c99 -g -Wall -W $(DEFINES)
 CXXFLAGS      = -pipe -g -Wall -W $(DEFINES)
 INCPATH       = -I.
 LINK          = gcc
-LFLAGS        = -Wl,--hash-style=gnu -Wl,--as-needed
-LIBS          = /usr/lib64/libreadline.a /usr/lib64/libncursesw.a $(SUBLIBS)
+LFLAGS        = 
+LIBS          = -lreadline -lncurses
+#/usr/lib64/libreadline.a /usr/lib64/libncursesw.a $(SUBLIBS)
 AR            = ar cqs
 RANLIB        = 
 TAR           = tar -cf
