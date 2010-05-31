@@ -105,9 +105,10 @@ int mips_reg_id(const char *name)
         // simple atoi from reg number
         
         int error;
-        int id = str_to_num(name, NULL, &error);
+        char *end;
+        int id = str_to_num(name, &end, &error);
         
-        if ( !error )
+        if ( !*end && !error && id < 32 )
             return id;
         
     } else if ( is_letter(*name) ) {
@@ -304,7 +305,7 @@ MIPS_Native mips_get_reg(MIPS *m, int id)
         return flags & COND_BIT ? cp->get_ctrl(cp, id) : cp->get_reg(cp, id);
     }
     
-    mipsim_printf(IO_WARNING, "Trying to read inexistant register\n");
+    mipsim_printf(IO_WARNING, "Trying to read inexistant register : %08x\n", id);
     
     return 0;
 }
