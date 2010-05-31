@@ -7,13 +7,15 @@
 const char *random_word();
 void print_word(const char *w, const char *alphabet);
 
+int sys_get_num();
+
 int main()
 {
     int max_tries = 4;
-    printf("Hangman\n");
+    fputs("Hangman\nchoose difficulty (number of tries) : ", stdout);
+    fflush(stdout);
     
-    printf("choose difficulty (number of tries) : ");
-    scanf("%d", &max_tries);
+    max_tries = sys_get_num();
     
     char alphabet[26];
     
@@ -78,13 +80,23 @@ int main()
             }
         }
         
+        printf("\nThe answer is : \"%s\"\n", w);
+        
         if ( found )
-            printf("\nHmph! Lesse if you can manage the next one...\n");
+            printf("\nLesse if you can find the next one...\n");
         else
             printf("\nHung high'n'short! Serves you right for being so dumb!\n");
     }
     
     return 0;
+}
+
+int sys_get_num()
+{
+    __asm__(
+        "addiu $v0, $zero, 5\t\n"
+        "syscall\t\n"
+    );
 }
 
 const char *dictionary[] = {
