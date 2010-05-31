@@ -15,26 +15,20 @@
 
 #include "io.h"
 
-enum {
-    CASE_MASK = ~('a' - 'A'),
-    NUM_ADJUST = -('A' - '0' - 10),
-    STR_ADJUST = ('A' - 10)
-};
-
 /*!
     \internal
     \brief auxiliary function for str->num conversion
 */
 uint8_t value(uint8_t c)
 {
-    c -= '0';
+    if ( c >= '0' && c <= '9' )
+        return c - '0';
+    else if ( c >= 'A' && c <= 'Z' )
+        return c - 'A' + 10;
+    else if ( c >= 'a' && c <= 'z' )
+        return c - 'a' + 10;
     
-    if ( c > 9 ) {
-        c &= CASE_MASK;  // discard case
-        c += NUM_ADJUST; // adjust
-    }
-    
-    return c;
+    return 0xFF;
 }
 
 
@@ -45,7 +39,7 @@ uint8_t value(uint8_t c)
 */
 uint8_t character(uint8_t c)
 {
-    return c <= 9 ? c + '0' : c + STR_ADJUST;
+    return c <= 9 ? c + '0' : c + 'A' - 10;
 }
 
 void cat_num(uint32_t n, uint8_t base, char *s, uint8_t pad)
@@ -133,12 +127,13 @@ uint32_t str_to_num(const char *s, const char **end, int *error)
     if ( *s == '0' )
     {
         ++s;
-        base = 8;
         
         if ( *s == 'x' )
         {
-            base += base;
+            base = 16;
             ++s;
+        } else {
+            base = 8;
         }
     }
     
@@ -187,8 +182,7 @@ int is_number(char c)
 
 int is_letter(char c)
 {
-    c &= CASE_MASK;
-    return c >= 'A' && c <= 'Z';
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
 int is_ident(char c)
@@ -235,7 +229,17 @@ uint32_t eval_expr(const char *s, _symbol_value eval_sym, void *d, int *error)
     
 //     mipsim_printf(IO_DEBUG, "evaluating : %s\n", s);
     
-    return eval_top(&s, eval_sym, d, error);
+    uint32_t v = eval_top(&s, eval_sym, d, error);
+    
+    skip_ws(&s);
+    
+    if ( *s )
+    {
+        *error = E_SYNTAX;
+        return 0;
+    }
+    
+    return v;
 }
 
 /*
@@ -251,19 +255,21 @@ uint32_t eval_expr(const char *s, _symbol_value eval_sym, void *d, int *error)
     Shift
     AddSub
     MultDiv
-    Fact
-    Power
     Literal -> Paren : Top
     
 */
 
 uint32_t eval_top(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "top: %s\n", *s);
+    
     return eval_ternary(s, eval_sym, d, error);
 }
 
 uint32_t eval_ternary(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "ternary: %s\n", *s);
+    
     uint32_t cond = eval_or(s, eval_sym, d, error);
     
     if ( *error )
@@ -303,6 +309,8 @@ uint32_t eval_ternary(const char **s, _symbol_value eval_sym, void *d, int *erro
 
 uint32_t eval_or(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "or: %s\n", *s);
+    
     uint32_t val = eval_xor(s, eval_sym, d, error);
     
     if ( *error )
@@ -329,6 +337,8 @@ uint32_t eval_or(const char **s, _symbol_value eval_sym, void *d, int *error)
 
 uint32_t eval_xor(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "xor: %s\n", *s);
+    
     uint32_t val = eval_and(s, eval_sym, d, error);
     
     if ( *error )
@@ -355,6 +365,8 @@ uint32_t eval_xor(const char **s, _symbol_value eval_sym, void *d, int *error)
 
 uint32_t eval_and(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "and: %s\n", *s);
+    
     uint32_t val = eval_equ(s, eval_sym, d, error);
     
     if ( *error )
@@ -381,6 +393,8 @@ uint32_t eval_and(const char **s, _symbol_value eval_sym, void *d, int *error)
 
 uint32_t eval_equ(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "equ: %s\n", *s);
+    
     uint32_t val = eval_rel(s, eval_sym, d, error);
     
     if ( *error )
@@ -389,7 +403,7 @@ uint32_t eval_equ(const char **s, _symbol_value eval_sym, void *d, int *error)
     skip_ws(s);
     char c = **s;
     
-    while ( c == '=' || c == '!' )
+    if ( c == '=' || c == '!' )
     {
         ++*s;
         
@@ -408,9 +422,8 @@ uint32_t eval_equ(const char **s, _symbol_value eval_sym, void *d, int *error)
         
         val = c == '=' ? (val == tmp) : (val != tmp);
         
-        skip_ws(s);
-        
-        c = **s;
+        //skip_ws(s);
+        //c = **s;
     }
     
 //     mipsim_printf(IO_DEBUG, "equ : %08x\n", val);
@@ -420,26 +433,79 @@ uint32_t eval_equ(const char **s, _symbol_value eval_sym, void *d, int *error)
 
 uint32_t eval_rel(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "rel: %s\n", *s);
+    
     uint32_t val = eval_shift(s, eval_sym, d, error);
     
     if ( *error )
         return 0;
+    
+    int equ = 0;
+    
+    skip_ws(s);
+    char c = **s;
+    
+    if ( c == '<' || c == '>' )
+    {
+        if ( *(*s + 1) == '=' )
+        {
+            ++*s;
+            equ = 1;
+        }
+        
+        next_non_ws(s);
+        
+        uint32_t tmp = eval_shift(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        val = (c == '<' ? (val < tmp) : (val > tmp)) || ((val == tmp) && equ);
+        
+        //skip_ws(s);
+        //c = **s;
+    }
     
     return val;
 }
 
 uint32_t eval_shift(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "shift: %s\n", *s);
+    
     uint32_t val = eval_addsub(s, eval_sym, d, error);
     
     if ( *error )
         return 0;
+    
+    skip_ws(s);
+    char c = **s;
+    
+    while ( (c == '<' || c == '>') && (*(*s + 1) == c) )
+    {
+        ++*s;
+        next_non_ws(s);
+        
+        uint32_t tmp = eval_addsub(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        val = c == '<' ? (val << tmp) : (val >> tmp);
+        
+        skip_ws(s);
+        c = **s;
+    }
+    
+//     mipsim_printf(IO_DEBUG, "shift : %08x\n", val);
     
     return val;
 }
 
 uint32_t eval_addsub(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
+//     mipsim_printf(IO_DEBUG, "add: %s\n", *s);
+    
     uint32_t val = eval_multdiv(s, eval_sym, d, error);
     
     if ( *error )
@@ -474,7 +540,9 @@ uint32_t eval_addsub(const char **s, _symbol_value eval_sym, void *d, int *error
 
 uint32_t eval_multdiv(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
-    uint32_t val = eval_fact(s, eval_sym, d, error);
+//     mipsim_printf(IO_DEBUG, "mult: %s\n", *s);
+    
+    uint32_t val = eval_literal(s, eval_sym, d, error);
     
     if ( *error )
         return 0;
@@ -486,7 +554,7 @@ uint32_t eval_multdiv(const char **s, _symbol_value eval_sym, void *d, int *erro
     {
         next_non_ws(s);
         
-        uint32_t tmp = eval_fact(s, eval_sym, d, error);
+        uint32_t tmp = eval_literal(s, eval_sym, d, error);
         
         if ( *error )
             return 0;
@@ -520,35 +588,16 @@ uint32_t eval_multdiv(const char **s, _symbol_value eval_sym, void *d, int *erro
     return val;
 }
 
-uint32_t eval_fact(const char **s, _symbol_value eval_sym, void *d, int *error)
-{
-    uint32_t val = eval_power(s, eval_sym, d, error);
-    
-    if ( *error )
-        return 0;
-    
-    return val;
-}
-
-uint32_t eval_power(const char **s, _symbol_value eval_sym, void *d, int *error)
-{
-    uint32_t val = eval_literal(s, eval_sym, d, error);
-    
-    if ( *error )
-        return 0;
-    
-    return val;
-}
-
 uint32_t eval_literal(const char **s, _symbol_value eval_sym, void *d, int *error)
 {
-    // TODO : try symbol evaluation
-    
     uint32_t val = 0;
+    
+//     mipsim_printf(IO_DEBUG, "lit: %s\n", *s);
     
     if ( **s == '(' )
     {
         next_non_ws(s);
+        
         val = eval_top(s, eval_sym, d, error);
         
         if ( *error )
@@ -564,7 +613,28 @@ uint32_t eval_literal(const char **s, _symbol_value eval_sym, void *d, int *erro
             return 0;
         }
         
+        ++*s;
+        
+    } else if ( **s == '*' ) {
+        // deref
+        
         next_non_ws(s);
+        val = eval_literal(s, eval_sym, d, error);
+        
+        if ( *error )
+            return 0;
+        
+        char buf[12];
+        buf[0] = '*';
+        buf[1] = '0';
+        buf[2] = 'x';
+        buf[11] = 0;
+        cat_num(val, 16, buf + 3, 8);
+        
+        val = eval_sym(buf, d, error);
+        
+        if ( *error )
+            return 0;
         
     } else if ( is_number(**s) ) {
         val = str_to_num(*s, s, error);
@@ -577,10 +647,10 @@ uint32_t eval_literal(const char **s, _symbol_value eval_sym, void *d, int *erro
         
 //         mipsim_printf(IO_DEBUG, "lit : %08x\n", val);
         
-    } else if ( is_ident(**s) || **s == '@' ) {
+    } else if ( is_ident(**s) ) {
         int n = 1;
         
-        while ( is_ident((*s)[n]) || is_number((*s)[n]) || (*s)[n] == '@' )
+        while ( is_ident((*s)[n]) || is_number((*s)[n]) )
             ++n;
         
         char *ident = malloc((n+1) * sizeof(char));

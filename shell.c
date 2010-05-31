@@ -48,7 +48,7 @@ uint32_t symbol_value(const char *n, void *d, int *error)
     int deref = 0;
     uint32_t value = 0;
     
-    while ( *n == '@' )
+    while ( *n == '*' )
     {
         ++deref;
         ++n;
@@ -76,14 +76,31 @@ uint32_t symbol_value(const char *n, void *d, int *error)
     
     if ( !found )
     {
-        if ( error != NULL )
-            *error = E_UNDEFINED;
+        int stat;
+        const char *end;
+        value = str_to_num(n, &end, &stat);
+        
+        found = !(*end || stat);
+    }
+    
+    if ( !found )
+    {
+        *error = E_UNDEFINED;
         
         return 0;
     }
     
     while ( deref-- )
-        value = mips_read_w(m, value, NULL);
+    {
+        int stat;
+        value = mips_read_w(m, value, &stat);
+        
+        if ( stat )
+        {
+            *error = E_UNDEFINED;
+            return 0;
+        }   
+    }
     
     return value;
 }
