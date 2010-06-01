@@ -729,14 +729,16 @@ int shell_addbp(int argc, char **argv, Shell_Env *e)
         
         if ( argc == 5 )
         {
-            if ( !strcmp(argv[4], "memr") )
+            if ( !strcmp(argv[4], "memx") )
+                type = BKPT_MEM_X;
+            else if ( !strcmp(argv[4], "memr") )
                 type = BKPT_MEM_R;
             else if ( !strcmp(argv[4], "memw") )
                 type = BKPT_MEM_W;
             else if ( !strcmp(argv[4], "op") )
                 type = BKPT_OPCODE;
             else {
-                printf("Invalid [type] parameter : not in {memr, memw, op}\n");
+                printf("Invalid [type] parameter : not in {memx, memr, memw, op}\n");
                 return COMMAND_PARAM_TYPE;
             }
         }
