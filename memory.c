@@ -31,6 +31,7 @@ struct _MemMapping {
     MemMapping *next;
 };
 
+/*
 struct _TMemMapping {
     int type;
     void *mapped;
@@ -93,6 +94,7 @@ int mips_tree_map_ro(MIPS_Memory *m, MIPS_Addr a, uint32_t s, uint8_t *d)
 //     
     return 0;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 

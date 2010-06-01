@@ -502,6 +502,11 @@ void mips_breakpoint_clear(MIPS *m)
 
 /*!
     \brief Count breakpoints
+    \param m simulated machine
+    \param type filter
+    
+    If the type parameter is BKPT_NONE all breakpoints are counted, otherwise
+    only those matching the given type are counted.
 */
 int mips_breakpoint_count(MIPS *m, int type)
 {
@@ -510,7 +515,9 @@ int mips_breakpoint_count(MIPS *m, int type)
     
     while ( bkpt != NULL )
     {
-        ++n;
+        if ( type == BKPT_NONE || bkpt->d.type == type )
+            ++n;
+        
         bkpt = bkpt->next;
     }
     

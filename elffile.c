@@ -1291,7 +1291,6 @@ void elf_dump_symbols(ELF_File *elf, FILE *f)
 void elf_dump_relocation(ELF_File *elf, ELF_Rel *rel, ELF32_Word symtab, ELF32_Word target, FILE *f)
 {
     ELF32_Word sidx = ELF32_R_SYM(rel->r_info);
-    ELF32_Char type = ELF32_R_TYPE(rel->r_info);
     
     ELF_Section *s = elf->sections[target];
     ELF32_Addr base = s->s_addr ? s->s_addr : s->s_reloc;

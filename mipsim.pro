@@ -6,7 +6,7 @@ CONFIG -= qt
 
 OBJECTS_DIR = .obj
 
-QMAKE_CFLAGS += -std=c99
+QMAKE_CFLAGS += -std=c99 -Wextra
 
 readline {
     LIBS += -lreadline

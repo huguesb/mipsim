@@ -115,7 +115,7 @@ MIPS_Native _mips_get_lo(MIPS_Processor *p)
     {
         return ((MIPS_Processor_Private*)p->d)->lo;
     } else {
-        mipsim_printf(IO_WARNING, "");
+        mipsim_printf(IO_WARNING, "(NULL)\n");
         return -1;
     }
 }
@@ -138,7 +138,7 @@ MIPS_Native _mips_get_gpr_p(MIPS_Processor *p, int gpr)
         {
             return ((MIPS_Processor_Private*)p->d)->r[gpr];
         } else if ( gpr ) {
-            mipsim_printf(IO_WARNING, "");
+            mipsim_printf(IO_WARNING, "Trying to access non-existant coprocessor GPR\n");
         } else {
             return 0;
         }
@@ -159,7 +159,7 @@ void _mips_set_gpr_p(MIPS_Processor *p, int gpr, MIPS_Native value)
             
             ((MIPS_Processor_Private*)p->d)->r[gpr] = value;
         } else if ( gpr ) {
-            mipsim_printf(IO_WARNING, "");
+            mipsim_printf(IO_WARNING, "Trying to write non-existant processor GPR\n");
         }
     } else {
         mipsim_printf(IO_WARNING, "(NULL)\n");
@@ -169,6 +169,7 @@ void _mips_set_gpr_p(MIPS_Processor *p, int gpr, MIPS_Native value)
 void _mips_sig_ex(MIPS_Processor *p, int exception)
 {
     mipsim_printf(IO_WARNING, "exception %d\n", exception);
+    mips_stop(((MIPS_Processor_Private*)p->d)->m, MIPS_EXCEPTION);
 }
 
 /*!
@@ -269,7 +270,7 @@ MIPS_Native _mips_get_gpr_cp(MIPS_Coprocessor *p, int gpr)
         {
             return ((MIPS_Coprocessor_Private*)p->d)->r[gpr];
         } else {
-            mipsim_printf(IO_WARNING, "");
+            mipsim_printf(IO_WARNING, "Trying to access non-existant coprocessor GPR\n");
             return 0;
         }
     } else {
@@ -285,11 +286,9 @@ void _mips_set_gpr_cp(MIPS_Coprocessor *p, int gpr, MIPS_Native value)
     {
         if ( gpr >= 0 && gpr < 32 )
         {
-            mipsim_printf(IO_TRACE, "\t%s = 0x%08x\n", mips_reg_name(gpr | CP1), value);
-            
             ((MIPS_Coprocessor_Private*)p->d)->r[gpr] = value;
         } else {
-            mipsim_printf(IO_WARNING, "");
+            mipsim_printf(IO_WARNING, "Trying to write non-existant coprocessor GPR\n");
         }
     } else {
         mipsim_printf(IO_WARNING, "(NULL)\n");
@@ -322,8 +321,7 @@ MIPS_Native _mips_get_ctrl_fpu(MIPS_Coprocessor *p, int gpr)
             // FP Control / Status
             return fpu->fcsr;
         } else {
-            mipsim_printf(IO_WARNING, "Trying to access inexistant FPU ctrl register");
-//             mips_stop(m, MIPS_UNPREDICTABLE);
+            mipsim_printf(IO_WARNING, "Trying to access inexistant FPU ctrl register\n");
             return 0;
         }
     } else {
@@ -365,7 +363,7 @@ void _mips_set_ctrl_fpu(MIPS_Coprocessor *p, int gpr, MIPS_Native value)
             // TODO : test for exception trigger
             
         } else {
-            mipsim_printf(IO_WARNING, "Trying to write inexistant FPU ctrl register");
+            mipsim_printf(IO_WARNING, "Trying to write inexistant FPU ctrl register\n");
         }
     } else {
         mipsim_printf(IO_WARNING, "(NULL)\n");
@@ -376,16 +374,13 @@ MIPS_Native _mips_get_ctrl_cp0(MIPS_Coprocessor *p, int gpr)
 {
     if ( p != NULL && p->d != NULL )
     {
-        MIPS_CP0_Private *cp0 = ((MIPS_CP0_Private*)p->d);
+        //MIPS_CP0_Private *cp0 = ((MIPS_CP0_Private*)p->d);
         
-        // see MIPS ISA for details of this weirdness
-        
-        if ( 0 )
+        if ( gpr < 31 )
         {
-            
+            mipsim_printf(IO_WARNING, "Trying to access CP0 ctrl register %d\n", gpr);
         } else {
-            mipsim_printf(IO_WARNING, "Trying to access inexistant CP0 ctrl register");
-//             mips_stop(m, MIPS_UNPREDICTABLE);
+            mipsim_printf(IO_WARNING, "Trying to access inexistant CP0 ctrl register\n");
             return 0;
         }
     } else {
@@ -399,13 +394,14 @@ void _mips_set_ctrl_cp0(MIPS_Coprocessor *p, int gpr, MIPS_Native value)
 {
     if ( p != NULL && p->d != NULL )
     {
-        MIPS_CP0_Private *cp0 = ((MIPS_CP0_Private*)p->d);
+        //MIPS_CP0_Private *cp0 = ((MIPS_CP0_Private*)p->d);
         
-        if ( 0 )
+        if ( gpr < 31 )
         {
-            
-        } else if ( gpr ) {
-            mipsim_printf(IO_WARNING, "Trying to write inexistant CP0 ctrl register");
+            (void)value;
+            mipsim_printf(IO_WARNING, "Trying to write CP0 ctrl register %d\n", gpr);
+        } else {
+            mipsim_printf(IO_WARNING, "Trying to write inexistant CP0 ctrl register\n");
         }
     } else {
         mipsim_printf(IO_WARNING, "(NULL)\n");

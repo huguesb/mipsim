@@ -22,6 +22,8 @@
 */
 int mipsim_open (int cxt, const char *path, int flags)
 {
+    (void)cxt; (void)path; (void)flags;
+    
     printf("Unexpected gateway open\n");
     return 0; //open(path, flags);
 }
@@ -38,7 +40,7 @@ int mipsim_read (int cxt, int file, char *d, int len)
             char *ret = fgets(d, len, mipsim_config()->mon_in);
             
             // remove extra LF
-            d[strlen(d) < len ? strlen(d) : len - 1] = 0;
+            d[strlen(d) < (unsigned int)len ? strlen(d) : (unsigned int)len - 1] = 0;
             
             return ret != NULL;
         } else {
@@ -58,6 +60,8 @@ int mipsim_write(int cxt, int file, char *d, int len)
 {
     if ( cxt == IO_MONITOR )
     {
+        (void)file;
+        
         int ret = fwrite(d, sizeof(char), len, mipsim_config()->mon_out);
         fflush(mipsim_config()->mon_out);
         return ret;
