@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 
-int main(int argc, char **argv)
+int main()
 {
     int i = 123, j = 15;
     

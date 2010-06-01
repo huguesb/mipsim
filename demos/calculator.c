@@ -36,8 +36,6 @@ int main()
     l.d.name = NULL;
     l.d.value = 0;
     
-    uint32_t unamed = 0;
-    
     printf("MIPS Calculator\n");
     
     while ( 1 )
@@ -83,12 +81,12 @@ int main()
             {
                 printf("Error encountered : %d\n", error);
             } else if ( name != NULL ) {
-                printf(" %s = %d\n", name, value);
+                printf(" %s = %lu\n", name, value);
                 char *sname = malloc(strlen(name) * sizeof(char));
                 strcpy(sname, name);
                 save_symbol(sname, value, &l);
             } else {
-                printf(" $ = %d\n", value);
+                printf(" $ = %lu\n", value);
             }
             
             // symbol refering to last result
@@ -104,6 +102,8 @@ int main()
 
 char* get_cmd(char *buf, int len)
 {
+    (void) buf;
+    (void) len;
     __asm__(
         "addiu $v0, $zero, 8\t\n"
         "syscall\t\n"
@@ -165,12 +165,16 @@ void clear_symbols(SymbolList *l)
 
 int mipsim_printf(int cxt, const char *fmt, ...)
 {
+    (void) cxt;
+    
     va_list args;
     va_start(args, fmt);
     
-    vprintf(fmt, args);
+    int ret = vprintf(fmt, args);
     
     va_end(args);
+    
+    return ret;
 }
 
 #include "../util.c"

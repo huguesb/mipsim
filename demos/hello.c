@@ -11,6 +11,8 @@ void _start()
 
 void print_string(const char *s)
 {
+    (void) s;
+    
     __asm__(
     "addiu $v0, $zero, 4\t\n"
     "syscall\t\n"
