@@ -12,6 +12,7 @@
 #define _ELF_FILE_H_
 
 #include <stdint.h>
+#include <stdio.h>
 
 /*
     Most structures taken from ELF spec, with some slight
@@ -276,5 +277,8 @@ ELF_Section* elf_section(ELF_File *elf, const char *name);
 
 uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat);
 const char* elf_symbol_name(ELF_File *elf, ELF32_Addr value, int *stat);
+
+void elf_dump_symbols(ELF_File *elf, FILE *f);
+void elf_dump_relocations(ELF_File *elf, FILE *f);
 
 #endif

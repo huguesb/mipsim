@@ -10,7 +10,6 @@
 
 #include "elffile.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -493,7 +492,7 @@ int elf_file_load_segments(ELF_File *elf, FILE *handle, const char *filename)
         elf->segments = (ELF_Segment**)malloc(elf->header->e_phnum * sizeof(ELF_Segment*));
     
     const ELF32_Char endian = elf->header->e_ident[EI_DATA];
-    const ELF32_Off min_offset = elf->header->e_phoff + elf->header->e_phentsize * (elf->header->e_phnum + 1);
+//     const ELF32_Off min_offset = elf->header->e_phoff + elf->header->e_phentsize * (elf->header->e_phnum + 1);
     
     ELF32_Addr first_addr = -1, last_addr = 0;
     
@@ -689,9 +688,9 @@ int elf_file_load_section(ELF_Section *s, FILE *handle, int endian, const char *
             
             sym->s_name  = elf_fget_word(handle, endian);
             sym->s_value = elf_fget_word(handle, endian);
-            sym->s_size  = fgetc(handle);
+            sym->s_size  = elf_fget_word(handle, endian);
             sym->s_info  = fgetc(handle);
-            sym->s_other = elf_fget_word(handle, endian);
+            sym->s_other = fgetc(handle);
             sym->s_shndx = elf_fget_half(handle, endian);
             ++sym;
             
@@ -801,7 +800,7 @@ int elf_file_load_sections(ELF_File *elf, FILE *handle, const char *filename)
     mipsim_printf(IO_DEBUG, "ELF:%s:Loading %d sections\n", filename, elf->header->e_shnum);
     
     const ELF32_Char endian = elf->header->e_ident[EI_DATA];
-    const ELF32_Off min_offset = elf->header->e_shoff + elf->header->e_shentsize * (elf->header->e_shnum + 1);
+//     const ELF32_Off min_offset = elf->header->e_shoff + elf->header->e_shentsize * (elf->header->e_shnum + 1);
     
     elf->sections = (ELF_Section**)malloc(elf->header->e_shnum * sizeof(ELF_Section*));
     elf->nsection = elf->header->e_shnum;
@@ -1229,4 +1228,111 @@ ELF_Section* elf_section(ELF_File *elf, const char *name)
             return elf->sections[i];
     
     return NULL;
+}
+
+/*!
+    \internal
+    \brief Dump a single symbol
+    \param elf ELF file
+    \param sym symbol
+    \param strtab string table associated to symbol
+    \param f output FILE
+*/
+void elf_dump_symbol(ELF_File *elf, ELF_Sym *sym, ELF32_Word strtab, FILE *f)
+{
+    char type = ELF32_ST_TYPE(sym->s_info);
+    
+    fprintf(f,
+            "0x%08x  0x%08x  %02x  %02x  %04x  %s\n",
+            elf_symbol_address(elf, sym),
+            sym->s_size,
+            sym->s_info,
+            sym->s_other,
+            sym->s_shndx,
+            type == STT_SECTION
+                ? elf_section_name(elf, sym->s_shndx, NULL)
+                : elf_string(elf, strtab, sym->s_name)
+            );
+}
+
+/*!
+    \brief Dump symbols from an ELF file
+    \param elf ELF file to dump
+    \param f output FILE where to write dump
+*/
+void elf_dump_symbols(ELF_File *elf, FILE *f)
+{
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
+    {
+        ELF_Section *s = elf->sections[i];
+        
+        if ( s == NULL || s->s_type != SHT_SYMTAB )
+            continue;
+        
+        ELF_Sym *sym = (ELF_Sym*)((void*)s->s_data);
+        const ELF32_Word n = s->s_size / s->s_entsize;
+        
+        fprintf(f, "* %d symbols in %s\n", n, elf_section_name(elf, i, NULL));
+        
+        for ( ELF32_Word k = 0; k < n; ++k )
+            elf_dump_symbol(elf, sym + k, s->s_link, f);
+        
+    }
+}
+
+/*!
+    \internal
+    \brief Dump a single symbol
+    \param elf ELF file
+    \param rel symbol
+    \param strtab string table associated to symbol
+    \param f output FILE
+*/
+void elf_dump_relocation(ELF_File *elf, ELF_Rel *rel, ELF32_Word symtab, ELF32_Word target, FILE *f)
+{
+    ELF32_Word sidx = ELF32_R_SYM(rel->r_info);
+    ELF32_Char type = ELF32_R_TYPE(rel->r_info);
+    
+    ELF_Section *s = elf->sections[target];
+    ELF32_Addr base = s->s_addr ? s->s_addr : s->s_reloc;
+    
+    ELF32_Word strtab = elf->sections[symtab]->s_link;
+    ELF_Sym *sym = ((ELF_Sym*)elf->sections[symtab]->s_data) + sidx;
+    
+    fprintf(f,
+            "0x%08x  0x%08x  0x%08x  %s\n",
+            rel->r_offset + base,
+            rel->r_info,
+            elf_symbol_address(elf, sym),
+            elf_string(elf, strtab, sym->s_name)
+            );
+}
+
+/*!
+    \brief Dump relocations from an ELF file
+    \param elf ELF file to dump
+    \param f output FILE where to write dump
+*/
+void elf_dump_relocations(ELF_File *elf, FILE *f)
+{
+    for ( ELF32_Word i = 0; i < elf->nsection; ++i )
+    {
+        ELF_Section *s = elf->sections[i];
+        
+        if ( s == NULL || s->s_type != SHT_REL )
+            continue;
+        
+        ELF_Rel *r = (ELF_Rel*)((void*)s->s_data);
+        const ELF32_Word n = s->s_size / s->s_entsize;
+        
+        fprintf(f, "* %d relocations in %s   [=> %s]\n",
+                n,
+                elf_section_name(elf, i, NULL),
+                elf_section_name(elf, s->s_info, NULL)
+                );
+        
+        for ( ELF32_Word k = 0; k < n; ++k )
+            elf_dump_relocation(elf, r + k, s->s_link, s->s_info, f);
+        
+    }
 }

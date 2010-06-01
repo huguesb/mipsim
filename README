@@ -284,6 +284,19 @@ mathematical expressions for readability, double-quote the parameter.
  Display target status (i.e last stop reason if any).
 
 
+* dsym
+--------------------------------------------------------------------------------
+ 
+ Display symbols found in the last loaded ELF file.
+
+
+* drel
+--------------------------------------------------------------------------------
+ 
+ Display relocations informations found in the last loaded ELF file.
+
+
+
 Limitations
 -----------
 

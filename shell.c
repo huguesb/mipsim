@@ -908,6 +908,38 @@ int shell_status(int argc, char **argv, Shell_Env *e)
     return COMMAND_OK;
 }
 
+int shell_dsym(int argc, char **argv, Shell_Env *e)
+{
+    ELF_File *elf = e->f;
+    if ( elf == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    (void)argv;
+    
+    if ( argc != 1 )
+        return COMMAND_PARAM_COUNT;
+    
+    elf_dump_symbols(elf, stdout);
+    
+    return COMMAND_OK;
+}
+
+int shell_drel(int argc, char **argv, Shell_Env *e)
+{
+    ELF_File *elf = e->f;
+    if ( elf == NULL )
+        return COMMAND_NEED_TARGET;
+    
+    (void)argv;
+    
+    if ( argc != 1 )
+        return COMMAND_PARAM_COUNT;
+    
+    elf_dump_relocations(elf, stdout);
+    
+    return COMMAND_OK;
+}
+
 int shell_help(int argc, char **argv, Shell_Env *e);
 
 static const Command commands[] = {
@@ -1011,6 +1043,10 @@ static const Command commands[] = {
         " Default flags value is w.\n"},
     {"status",  NULL, shell_status, "",
         " Show target status"},
+    {"dsym",  NULL, shell_dsym, "",
+        " Show symbols from ELF file"},
+    {"drel",  NULL, shell_drel, "",
+        " Show relocation informations from ELF file"},
     {"quit",  "q",  shell_quit,     "",
         " Quit MIPSim"},
     {"exit",  NULL, shell_quit,     "",
