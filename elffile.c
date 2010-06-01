@@ -1152,6 +1152,12 @@ int elf_file_relocate(ELF_File *elf)
 */
 uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat)
 {
+    if ( stat != NULL )
+        *stat = -1;
+    
+    if ( elf == NULL || name == NULL )
+        return 0;
+    
     for ( ELF32_Word i = 0; i < elf->nsection; ++i )
     {
         ELF_Section *s = elf->sections[i];
@@ -1170,7 +1176,7 @@ uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat)
                 ? elf_section_name(elf, sym[k].s_shndx, NULL)
                 : elf_string(elf, s->s_link, sym[k].s_name);
             
-            if ( !strcmp(name, sname) )
+            if ( sname != NULL && !strcmp(name, sname) )
             {
                 if ( stat )
                     *stat = type;
@@ -1179,9 +1185,6 @@ uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat)
             }
         }
     }
-    
-    if ( stat != NULL )
-        *stat = -1;
     
     return 0;
 }
@@ -1229,9 +1232,16 @@ const char* elf_symbol_name(ELF_File *elf, ELF32_Addr value, int *stat)
 */
 ELF_Section* elf_section(ELF_File *elf, const char *name)
 {
+    if ( name == NULL )
+        return NULL;
+    
     for ( ELF32_Word i = 0; i < elf->nsection; ++i )
-        if ( !strcmp(name, elf_section_name(elf, i, NULL)) )
+    {
+        const char *sname = elf_section_name(elf, i, NULL);
+        
+        if ( sname != NULL && !strcmp(name, sname) )
             return elf->sections[i];
+    }
     
     return NULL;
 }

@@ -28,6 +28,9 @@ static ELF32_Addr section_addr_end[] = {
 */
 ELF32_Addr section_addr(const char *name, ELF32_Word size)
 {
+    if ( name == NULL )
+        return 0;
+    
     ELF32_Addr a = 0;
     int n = -1;
     

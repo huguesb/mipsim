@@ -43,6 +43,9 @@ static const char *mips_isa_names[] = {
 */
 int mips_isa_id(const char* name)
 {
+    if ( name == NULL )
+        return MIPS_ARCH_NONE;
+    
     for ( int i = MIPS_ARCH_FIRST; i < MIPS_ARCH_LAST; ++i )
     {
         const char *isa = mips_isa_names[i];
@@ -51,7 +54,7 @@ int mips_isa_id(const char* name)
         if ( *name != 'm' )
             isa += 4;
         
-        if ( !strcmp(isa, name) )
+        if ( isa != NULL && !strcmp(isa, name) )
             return i;
     }
     
