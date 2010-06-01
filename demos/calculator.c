@@ -116,11 +116,11 @@ uint32_t symbol_value(const char *n, void *d, int *error)
 {
     SymbolList *l = (SymbolList*)d;
     
-    printf("sym lookup : %s\n", n);
+//     printf("sym lookup : %s\n", n);
     
     while ( l != NULL )
     {
-        printf(" ? %s\n", l->d.name);
+//         printf(" ? %s\n", l->d.name);
         
         if ( l->d.name != NULL && !strcmp(l->d.name, n) )
         {
