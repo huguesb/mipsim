@@ -10,6 +10,12 @@
 
 #include "mipself.h"
 
+/*!
+    \file mipself.c
+    \brief Bridge between ELF manipulation and MIPS simulator
+    \author Hugues Bruant
+*/
+
 #include "io.h"
 #include "config.h"
 

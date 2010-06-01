@@ -10,6 +10,12 @@
 
 #include "mips.h"
 
+/*!
+    \file mips.c
+    \brief MIPS simulation implementation
+    \author Hugues Bruant
+*/
+
 #include "io.h"
 #include "util.h"
 #include "decode.h"

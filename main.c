@@ -10,6 +10,12 @@
 
 #include "version.h"
 
+/*!
+    \file main.c
+    \brief main
+    \author Hugues Bruant
+*/
+
 #include "config.h"
 #include "shell.h"
 

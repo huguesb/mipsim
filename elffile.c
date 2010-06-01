@@ -10,6 +10,12 @@
 
 #include "elffile.h"
 
+/*!
+    \file elffile.c
+    \brief ELF manipulation implementation
+    \author Hugues Bruant
+*/
+
 #include <stdlib.h>
 #include <string.h>
 

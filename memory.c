@@ -10,6 +10,12 @@
 
 #include "mips.h"
 
+/*!
+    \file memory.c
+    \brief Simulator memory "controller"
+    \author Hugues Bruant
+*/
+
 #include "io.h"
 
 enum {

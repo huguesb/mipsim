@@ -10,6 +10,12 @@
 
 #include "util.h"
 
+/*!
+    \file util.c
+    \brief Utility functions
+    \author Hugues Bruant
+*/
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,8 +37,6 @@ uint8_t value(uint8_t c)
     return 0xFF;
 }
 
-
-
 /*!
     \internal
     \brief auxiliary function for num-> conversion
@@ -42,6 +46,13 @@ uint8_t character(uint8_t c)
     return c <= 9 ? c + '0' : c + 'A' - 10;
 }
 
+/*!
+    \brief Number->string conversion
+    \param n number to convert
+    \param base base to use for conversion
+    \param s destination
+    \param pad number of characters to write (zero padding)
+*/
 void cat_num(uint32_t n, uint8_t base, char *s, uint8_t pad)
 {
     int sz = pad;
@@ -175,16 +186,25 @@ uint32_t str_to_num(const char *s, const char **end, int *error)
     return r;
 }
 
+/*!
+    \return 1 if the the given character is a decimal digit, 0 otherwise
+*/
 int is_number(char c)
 {
     return c >= '0' && c <= '9';
 }
 
+/*!
+    \return 1 if the given character is a roman letter [A-Za-z], 0 otherwise
+*/
 int is_letter(char c)
 {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
+/*!
+    \return 1 if the given character is a valid identifier/symbol character, 0 otherwise
+*/
 int is_ident(char c)
 {
     return is_letter(c) || c == '$' || c == '_' || c == '.';
@@ -204,12 +224,20 @@ uint32_t eval_fact(const char **s, _symbol_value eval_sym, void *d, int *error);
 uint32_t eval_power(const char **s, _symbol_value eval_sym, void *d, int *error);
 uint32_t eval_literal(const char **s, _symbol_value eval_sym, void *d, int *error);
 
+/*!
+    \internal
+    \brief Skip whitespaces
+*/
 void skip_ws(const char **s)
 {
     while ( **s == ' ' || **s == '\t' || **s == '\n' )
         ++*s;
 }
 
+/*!
+    \internal
+    \brief Move to next non withespace character
+*/
 void next_non_ws(const char **s)
 {
     ++*s;

@@ -11,6 +11,12 @@
 #ifndef _MIPSIM_CONFIG_H_
 #define _MIPSIM_CONFIG_H_
 
+/*!
+    \file config.h
+    \brief Simulator config and CLI parsing
+    \author Hugues Bruant
+*/
+
 #include <stdio.h>
 #include <inttypes.h>
 

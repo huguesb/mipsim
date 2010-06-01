@@ -10,6 +10,12 @@
 
 #include "shell.h"
 
+/*!
+    \file shell.c
+    \brief Shell interface
+    \author Hugues Bruant
+*/
+
 #include <stdio.h>
 #include <string.h>
 
@@ -23,11 +29,24 @@
 #include "config.h"
 #include "mipself.h"
 
+/*!
+    \internal 
+    \brief Structure passed to shell command callbacks
+    
+    Hold all informations that might be useful for a shell command to do its biding
+*/
 typedef struct _Shell_Env {
     MIPS *m;
     ELF_File *f;
 } Shell_Env;
 
+/*!
+    \internal
+    \brief Symbol-evaluation callback for expression evaluation
+    
+    Recognize register names, ELF symbols, immediate values and
+    accept arbitrary number of dereference.
+*/
 uint32_t symbol_value(const char *n, void *d, int *error)
 {
     if ( n == NULL )
@@ -105,8 +124,16 @@ uint32_t symbol_value(const char *n, void *d, int *error)
     return value;
 }
 
+/*!
+    \internal
+    \brief Shell command callback
+*/
 typedef int (*command_handler)(int argc, char **argv, Shell_Env *e);
 
+/*!
+    \internal
+    \brief shell command exit code
+*/
 enum {
     COMMAND_OK,
     COMMAND_FAIL,
@@ -118,6 +145,10 @@ enum {
     COMMAND_EXIT = -1
 };
 
+/*!
+    \internal
+    \brief Shell command data
+*/
 typedef struct _Command {
     const char *name;
     const char *shorthand;
@@ -439,6 +470,8 @@ const char* find_symbol(MIPS_Addr org, MIPS_Addr val, void *d)
     
     if ( elf == NULL )
         return NULL;
+    
+    // TODO : prioritize symbol lookup by type
     
     int stat;
     const char *s = elf_symbol_name(elf, val, &stat);
@@ -944,6 +977,10 @@ int shell_drel(int argc, char **argv, Shell_Env *e)
 
 int shell_help(int argc, char **argv, Shell_Env *e);
 
+/*!
+    \internal
+    \brief All command data
+*/
 static const Command commands[] = {
     {"load",  "l",  shell_load,     "<filepath>",
         " Loads an ELF binary (executable or relocatable) and map it into the memory of\n"

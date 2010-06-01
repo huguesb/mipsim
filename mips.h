@@ -11,6 +11,12 @@
 #ifndef _MIPS_H_
 #define _MIPS_H_
 
+/*!
+    \file mips.h
+    \brief MIPS simulation API
+    \author Hugues Bruant
+*/
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

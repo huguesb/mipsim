@@ -13,5 +13,10 @@
 
 #include "mips.h"
 
+/*!
+    \file mips_p.h
+    \brief Internal simulator structures
+    \author Hugues Bruant
+*/
 
 #endif

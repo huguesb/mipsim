@@ -10,6 +10,12 @@
 
 #include "monitor.h"
 
+/*!
+    \file monitor.c
+    \brief Monitor / syscall entry points for use by simulator
+    \author Hugues Bruant
+*/
+
 #include "io.h"
 #include "util.h"
 #include "config.h"

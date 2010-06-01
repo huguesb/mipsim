@@ -13,6 +13,12 @@
 
 #include "mips.h"
 
+/*!
+    \file shell.h
+    \brief Shell interface
+    \author Hugues Bruant
+*/
+
 int mipsim_shell();
 
 #endif

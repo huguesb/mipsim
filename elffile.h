@@ -11,6 +11,12 @@
 #ifndef _ELF_FILE_H_
 #define _ELF_FILE_H_
 
+/*!
+    \file elffile.h
+    \brief ELF manipulation API
+    \author Hugues Bruant
+*/
+
 #include <stdint.h>
 #include <stdio.h>
 

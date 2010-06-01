@@ -11,6 +11,12 @@
 #ifndef _MIPSIM_VERSION_H_
 #define _MIPSIM_VERSION_H_
 
+/*!
+    \file version.h
+    \brief Version number macros
+    \author Hugues Bruant
+*/
+
 #define _VERSION_NUMBER(maj, min, patch) ((maj & 0xFF) << 16) | ((min & 0xFF) << 8) | (patch & 0xFF)
 #define _VERSION_STRING(maj, min, patch) ""#maj "."#min "."#patch
 

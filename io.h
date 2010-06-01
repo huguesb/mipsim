@@ -11,6 +11,12 @@
 #ifndef _MIPSIM_IO_H_
 #define _MIPSIM_IO_H_
 
+/*!
+    \file io.h
+    \brief I/O abstraction layer
+    \author Hugues Bruant
+*/
+
 enum MIPSIM_IO_Context {
     IO_NULL,
     IO_WARNING  = 1,

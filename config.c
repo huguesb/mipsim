@@ -10,6 +10,12 @@
 
 #include "config.h"
 
+/*!
+    \file config.c
+    \brief Simulator config and CLI parsing
+    \author Hugues Bruant
+*/
+
 #include <string.h>
 
 #include "mips.h"

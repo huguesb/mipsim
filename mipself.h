@@ -11,6 +11,12 @@
 #ifndef _MIPS_ELF_H_
 #define _MIPS_ELF_H_
 
+/*!
+    \file mipself.h
+    \brief Bridge between ELF manipulation and MIPS simulator
+    \author Hugues Bruant
+*/
+
 #include "mips.h"
 #include "elffile.h"
 

@@ -10,6 +10,12 @@
 
 #include "io.h"
 
+/*!
+    \file io.c
+    \brief I/O abstraction layer
+    \author Hugues Bruant
+*/
+
 #include "config.h"
 
 #include <stdio.h>

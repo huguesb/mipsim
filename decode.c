@@ -10,6 +10,12 @@
 
 #include "decode.h"
 
+/*!
+    \file decode.c
+    \brief MIPS instruction decode/execute
+    \author Hugues Bruant
+*/
+
 #include "io.h"
 #include "util.h"
 #include "monitor.h"
@@ -442,6 +448,12 @@ const MIPS_Instr opcodes[64] = {
 
 #define DISASM_BUFFER_SIZE 128
 
+/*!
+    \internal
+    \brief Helper to print register name
+    
+    \see mips_disasm
+*/
 int print_reg(char *s, int i, int maxsz, int reg)
 {
     const char *rn = mips_reg_name(reg);
@@ -452,6 +464,10 @@ int print_reg(char *s, int i, int maxsz, int reg)
     return i;
 }
 
+/*!
+    \internal
+    \brief Simple disassembly for trace mode
+*/
 const char* mips_disasm(const char *args, MIPS_Addr pc, uint32_t ir)
 {
     static char disasm_buffer[DISASM_BUFFER_SIZE];

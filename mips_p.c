@@ -10,6 +10,12 @@
 
 #include "mips_p.h"
 
+/*!
+    \file mips_p.c
+    \brief Internal simulator structures
+    \author Hugues Bruant
+*/
+
 #include "io.h"
 #include "monitor.h"
 

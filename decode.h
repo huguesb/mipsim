@@ -11,6 +11,12 @@
 #ifndef _MIPS_ARCH_H_
 #define _MIPS_ARCH_H_
 
+/*!
+    \file decode.h
+    \brief MIPS instruction decode/execute
+    \author Hugues Bruant
+*/
+
 #include "mips.h"
 
 enum {
