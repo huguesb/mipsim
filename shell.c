@@ -70,7 +70,7 @@ uint32_t symbol_value(const char *n, void *d, int *error)
         int stat;
         value = elf_symbol_value(f, n, &stat);
         
-        if ( !stat )
+        if ( stat != -1 )
             found = 1;
     }
     
@@ -227,7 +227,7 @@ int shell_print(int argc, char **argv, Shell_Env *e)
         if ( error )
             printf("  %d : error %d\n", i, error);
         else
-            printf("  %d : %08x\n", i, val);
+            printf("  %d : 0x%08x\n", i, val);
     }
     
     return COMMAND_OK;

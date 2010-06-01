@@ -1164,10 +1164,16 @@ uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat)
         
         for ( ELF32_Word k = 0; k < n; ++k )
         {
-            if ( !strcmp(name, elf_string(elf, s->s_link, sym[k].s_name)) )
+            int type = ELF32_ST_TYPE(sym[k].s_info);
+            
+            const char *sname = type == STT_SECTION
+                ? elf_section_name(elf, sym[k].s_shndx, NULL)
+                : elf_string(elf, s->s_link, sym[k].s_name);
+            
+            if ( !strcmp(name, sname) )
             {
                 if ( stat )
-                    *stat = ELF32_ST_TYPE(sym[k].s_info);
+                    *stat = type;
                 
                 return elf_symbol_address(elf, sym + k);
             }
@@ -1175,7 +1181,7 @@ uint32_t elf_symbol_value(ELF_File *elf, const char *name, int *stat)
     }
     
     if ( stat != NULL )
-        *stat = 1;
+        *stat = -1;
     
     return 0;
 }

@@ -40,7 +40,7 @@ int mipsim_read (int cxt, int file, char *d, int len)
             char *ret = fgets(d, len, mipsim_config()->mon_in);
             
             // remove extra LF
-            d[strlen(d) < (unsigned int)len ? strlen(d) : (unsigned int)len - 1] = 0;
+            // d[strlen(d) < (unsigned int)len ? strlen(d) : (unsigned int)len - 1] = 0;
             
             return ret != NULL;
         } else {
